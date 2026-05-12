@@ -19,7 +19,8 @@ import (
 	"github.com/spf13/cobra"
 
 	"go-admin/app/admin/models"
-	"go-admin/app/admin/router"
+	adminRouter "go-admin/app/admin/router"
+	eduRouter "go-admin/app/edu/router"
 	"go-admin/app/jobs"
 	"go-admin/common/database"
 	"go-admin/common/global"
@@ -53,7 +54,7 @@ func init() {
 	StartCmd.PersistentFlags().BoolVarP(&apiCheck, "api", "a", false, "Start server with check api data")
 
 	//注册路由 fixme 其他应用的路由，在本目录新建文件放在init方法
-	AppRouters = append(AppRouters, router.InitRouter)
+	AppRouters = append(AppRouters, adminRouter.InitRouter, eduRouter.InitRouter)
 }
 
 func setup() {
@@ -87,8 +88,8 @@ func run() error {
 	}
 
 	srv := &http.Server{
-		Addr:    fmt.Sprintf("%s:%d", config.ApplicationConfig.Host, config.ApplicationConfig.Port),
-		Handler: sdk.Runtime.GetEngine(),
+		Addr:         fmt.Sprintf("%s:%d", config.ApplicationConfig.Host, config.ApplicationConfig.Port),
+		Handler:      sdk.Runtime.GetEngine(),
 		ReadTimeout:  time.Duration(config.ApplicationConfig.ReadTimeout) * time.Second,
 		WriteTimeout: time.Duration(config.ApplicationConfig.WriterTimeout) * time.Second,
 	}

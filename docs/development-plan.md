@@ -439,6 +439,37 @@
 - 实现 MinIO 上传。
 - 实现资源上传和审核闭环。
 
+## 9. 当前已完成的业务开发
+
+本阶段已开始落地 M1-M3 的第一批代码骨架：
+
+- 后端新增 `app/edu` 业务模块。
+- 新增区域、学校、资源分类、资源标签、资源、资源文件、资源审核模型。
+- 新增教育业务数据库迁移：`cmd/migrate/migration/version/2026051200010_edu_tables.go`。
+- 新增后台接口：
+  - `/api/v1/edu/regions`
+  - `/api/v1/edu/schools`
+  - `/api/v1/edu/resource-categories`
+  - `/api/v1/edu/resource-tags`
+  - `/api/v1/edu/resources`
+  - `/api/v1/edu/resource-files`
+- 新增门户公开资源接口：
+  - `/api/v1/portal/resources`
+  - `/api/v1/portal/resources/:id`
+- 后台前端新增教育业务 API 封装和区域/学校/资源页面骨架。
+- 门户前端资源列表、资源详情已接入公开资源接口。
+
+已验证：
+
+- 后端 `go build ./...` 通过。
+
+待继续：
+
+- 安装前端依赖后执行 admin/portal 构建校验。
+- 为后台菜单表补充教育业务菜单和按钮权限。
+- 接入 MinIO 真实上传能力，替换当前资源文件元数据接口。
+- 扩展用户、区域、学校的数据权限。
+
 ## 8. 当前前端目录结构
 
 ```text
