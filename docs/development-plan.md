@@ -1,6 +1,6 @@
 ﻿# 特殊教育资源库平台开发计划
 
-更新时间：2026-05-12
+更新时间：2026-05-13
 
 ## 1. 当前技术基线
 
@@ -428,49 +428,71 @@
 - 课程视频如果直接 MP4 播放，一期可以接受；后续需要 HLS 转码。
 - 代码生成器可用于基础 CRUD，但核心业务流程、权限过滤、审核流不要完全依赖生成代码。
 
-## 7. 近期最小可执行清单
+## 7. 当前进度快照
 
-- 启动 `go-admin`。
-- 启动 `web/apps/admin`，即 `go-admin-ui` 的 `vue3_dev`。
-- 启动 `web/apps/portal` 门户前端。
-- 配好 MySQL 初始化数据。
-- 加入 Docker Compose：MySQL、Redis、MinIO。
-- 设计并创建区域、学校、资源分类、资源、资源文件、资源审核表。
-- 实现 MinIO 上传。
-- 实现资源上传和审核闭环。
+当前分支：
 
-## 9. 当前已完成的业务开发
+- `main`
+- 远程仓库：`https://github.com/ai1304/go-admin-edu.git`
+- 最新业务提交：`23f63c4 feat: add education resource module skeleton`
 
-本阶段已开始落地 M1-M3 的第一批代码骨架：
+当前阶段：
+
+- 已完成项目基线整理的一部分：仓库已迁移为 `go-admin-edu`，后端、后台前端、门户前端、共享包已纳入同一个根仓库。
+- 已开始落地 M1-M3：组织/学校、资源中心、门户资源展示的第一批业务骨架已提交。
+- 资源中心尚未形成完整可演示闭环，原因是 MinIO 上传、后台菜单权限、资源上传/审核 UI、数据权限还未完成。
+
+已完成：
 
 - 后端新增 `app/edu` 业务模块。
-- 新增区域、学校、资源分类、资源标签、资源、资源文件、资源审核模型。
-- 新增教育业务数据库迁移：`cmd/migrate/migration/version/2026051200010_edu_tables.go`。
-- 新增后台接口：
+- 后端新增模型：区域、学校、资源分类、资源标签、资源、资源文件、资源审核。
+- 后端新增迁移：`go-admin/cmd/migrate/migration/version/2026051200010_edu_tables.go`。
+- 后端新增后台管理接口：
   - `/api/v1/edu/regions`
   - `/api/v1/edu/schools`
   - `/api/v1/edu/resource-categories`
   - `/api/v1/edu/resource-tags`
   - `/api/v1/edu/resources`
   - `/api/v1/edu/resource-files`
-- 新增门户公开资源接口：
+- 后端新增门户公开资源接口：
   - `/api/v1/portal/resources`
   - `/api/v1/portal/resources/:id`
-- 后台前端新增教育业务 API 封装和区域/学校/资源页面骨架。
-- 门户前端资源列表、资源详情已接入公开资源接口。
+- 后台前端新增教育业务 API 封装：
+  - `web/apps/admin/src/api/edu/region.js`
+  - `web/apps/admin/src/api/edu/school.js`
+  - `web/apps/admin/src/api/edu/resource.js`
+- 后台前端新增页面骨架：
+  - `web/apps/admin/src/views/edu/region/index.vue`
+  - `web/apps/admin/src/views/edu/school/index.vue`
+  - `web/apps/admin/src/views/edu/resource/index.vue`
+- 门户前端新增资源 API：`web/apps/portal/src/api/resources.js`。
+- 门户资源列表和资源详情已接入公开资源接口。
 
 已验证：
 
-- 后端 `go build ./...` 通过。
+- 后端执行 `go build ./...` 通过。
+- 当前本地仓库状态曾在提交后保持 `main...origin/main`。
 
-待继续：
+未验证：
 
-- 安装前端依赖后执行 admin/portal 构建校验。
-- 为后台菜单表补充教育业务菜单和按钮权限。
-- 接入 MinIO 真实上传能力，替换当前资源文件元数据接口。
-- 扩展用户、区域、学校的数据权限。
+- 前端依赖尚未安装，未执行 `pnpm dev:admin`、`pnpm dev:portal`、`pnpm build`。
+- 尚未实际连接 MySQL 执行迁移。
+- 尚未启动完整 Docker 环境。
 
-## 8. 当前前端目录结构
+## 8. 近期最小可执行清单
+
+下一步建议按这个顺序继续，避免业务代码越写越散：
+
+1. 补齐 Docker Compose：MySQL、Redis、MinIO、后端、后台前端、门户前端。
+2. 安装前端依赖并验证 `web/apps/admin`、`web/apps/portal` 能启动。
+3. 执行后端迁移，确认教育业务表能成功创建。
+4. 为后台菜单表补充教育业务菜单和按钮权限。
+5. 接入 MinIO Storage，替换当前资源文件“元数据占位接口”。
+6. 完成后台资源上传/编辑/提交审核/审核页面。
+7. 完成门户资源列表筛选、详情预览、下载入口。
+8. 扩展用户与数据权限：`tenant_id`、`region_id`、`school_id`、用户类型。
+
+## 9. 当前前端目录结构
 
 ```text
 web/
