@@ -1,0 +1,13 @@
+{
+  "name": "special-education-web",
+  "private": true,
+  "version": "0.1.0",
+  "scripts": {
+    "dev:admin": "pnpm --dir apps/admin dev",
+    "dev:portal": "pnpm --dir apps/portal dev",
+    "build:admin": "pnpm --dir apps/admin build",
+    "build:portal": "pnpm --dir apps/portal build",
+    "build": "pnpm build:admin && pnpm build:portal"
+  },
+  "packageManager": "pnpm@9.0.0"
+}

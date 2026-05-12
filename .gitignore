@@ -1,0 +1,50 @@
+# OS/editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/settings.json
+
+# Local scratch
+.codex_tmp_docx_extract/
+tmp/
+temp/
+logs/
+*.log
+
+# Environment
+.env
+.env.local
+.env.*.local
+*.local
+
+# Node
+node_modules/
+dist/
+build/
+.vite/
+coverage/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Go
+*.exe
+*.test
+*.out
+vendor/
+
+# Runtime uploads and generated files
+go-admin/static/uploadfile/
+go-admin/temp/
+go-admin/logs/
+
+# Local databases
+*.db
+*.sqlite
+*.sqlite3
+
+# MinIO / object storage local data
+minio-data/
+data/minio/
