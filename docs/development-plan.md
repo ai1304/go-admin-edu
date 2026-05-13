@@ -448,6 +448,12 @@
 - 后端新增模型：区域、学校、资源分类、资源标签、资源、资源文件、资源审核。
 - 后端新增迁移：`go-admin/cmd/migrate/migration/version/2026051200010_edu_tables.go`。
 - 新增启动与部署说明文档：`docs/deployment-guide.md`。
+- 新增根级 `docker-compose.yml`，包含 MySQL、Redis、MinIO、后端、后台前端、门户前端。
+- 新增后端 Docker 配置：`go-admin/config/settings.docker.yml`。
+- 后端新增 MinIO 对象存储封装：`go-admin/common/objectstorage`。
+- 后端新增资源文件真实上传接口：`POST /api/v1/edu/resource-files/upload`。
+- 修复后台前端 Dockerfile 中遗留的合并冲突标记。
+- 新增门户前端 Dockerfile。
 - 后端新增后台管理接口：
   - `/api/v1/edu/regions`
   - `/api/v1/edu/schools`
@@ -455,6 +461,7 @@
   - `/api/v1/edu/resource-tags`
   - `/api/v1/edu/resources`
   - `/api/v1/edu/resource-files`
+  - `/api/v1/edu/resource-files/upload`
 - 后端新增门户公开资源接口：
   - `/api/v1/portal/resources`
   - `/api/v1/portal/resources/:id`
@@ -478,17 +485,17 @@
 
 - 前端依赖尚未安装，未执行 `pnpm dev:admin`、`pnpm dev:portal`、`pnpm build`。
 - 尚未实际连接 MySQL 执行迁移。
-- 尚未启动完整 Docker 环境。
+- 当前机器 Docker CLI 不可用，尚未执行 `docker compose config` 或启动完整 Docker 环境。
 
 ## 8. 近期最小可执行清单
 
 下一步建议按这个顺序继续，避免业务代码越写越散：
 
-1. 补齐 Docker Compose：MySQL、Redis、MinIO、后端、后台前端、门户前端。
+1. 在有 Docker 的机器上执行 `docker compose config` 并启动 MySQL、Redis、MinIO。
 2. 安装前端依赖并验证 `web/apps/admin`、`web/apps/portal` 能启动。
 3. 执行后端迁移，确认教育业务表能成功创建。
 4. 为后台菜单表补充教育业务菜单和按钮权限。
-5. 接入 MinIO Storage，替换当前资源文件“元数据占位接口”。
+5. 后台资源页面接入 `POST /api/v1/edu/resource-files/upload`。
 6. 完成后台资源上传/编辑/提交审核/审核页面。
 7. 完成门户资源列表筛选、详情预览、下载入口。
 8. 扩展用户与数据权限：`tenant_id`、`region_id`、`school_id`、用户类型。

@@ -8,9 +8,20 @@ var ExtConfig Extend
 //      name: demo-name
 // 使用方法： config.ExtConfig......即可！！
 type Extend struct {
-	AMap AMap   // 这里配置对应配置文件的结构即可
+	AMap    AMap
+	Storage Storage
 }
 
 type AMap struct {
 	Key string
+}
+
+type Storage struct {
+	Driver          string
+	Endpoint        string
+	PublicEndpoint  string
+	AccessKeyID     string
+	AccessKeySecret string
+	BucketName      string
+	UseSSL          bool
 }

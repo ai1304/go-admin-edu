@@ -15,7 +15,7 @@
 
 ## 2. 当前部署结论
 
-当前项目已经具备本地启动和数据库初始化能力，但还不是完整的一键部署形态。
+当前项目已经具备本地启动、数据库初始化以及 Docker Compose 编排草案。
 
 已具备：
 
@@ -23,11 +23,14 @@
 - 后端具备迁移命令，可初始化基础表和教育业务表。
 - 后台前端和门户前端已统一到 `web/` workspace。
 - 两个前端均已配置反向代理到本地后端 `http://127.0.0.1:8000`。
+- 根目录已新增 `docker-compose.yml`，包含 MySQL、Redis、MinIO、后端、后台前端、门户前端。
+- 后端已新增 Docker 专用配置：`go-admin/config/settings.docker.yml`。
+- 后端已接入 MinIO 对象存储封装和资源文件上传接口。
 
 当前限制：
 
-- `go-admin/docker-compose.yml` 目前只包含后端容器，不包含 MySQL、Redis、MinIO、前端服务。
-- 生产部署前仍需补齐完整 Compose 或其他部署脚本。
+- 当前机器 Docker CLI 不可用，尚未执行 `docker compose config` 和完整容器启动验证。
+- Compose 仍属于开发环境配置，生产部署前需要拆分密钥、域名、HTTPS、持久化路径和备份策略。
 
 ## 3. 环境要求
 
@@ -37,18 +40,28 @@
 - Node.js
 - pnpm 9
 - MySQL 8.x
+- Docker / Docker Compose
+- Redis
+- MinIO
 
 说明：
 
 - `web/package.json` 指定 `packageManager` 为 `pnpm@9.0.0`。
 - 后端默认数据库类型为 MySQL。
 - 当前仓库默认本地开发端口为 `8000`、`1798`、`1799`。
+- Docker Compose 暴露端口为 `8000`、`18080`、`18081`、`3306`、`6379`、`9000`、`9001`。
 
 ## 4. 端口约定
 
 - 后端 API：`8000`
 - 后台前端：admin：`1798`
 - 门户前端：portal：`1799`
+- Docker 后台前端：admin：`18080`
+- Docker 门户前端：portal：`18081`
+- MySQL：`3306`
+- Redis：`6379`
+- MinIO API：`9000`
+- MinIO Console：`9001`
 
 当前前端代理关系：
 
@@ -215,6 +228,47 @@ http://127.0.0.1:1799
 
 而不是手工逐个执行 SQL 文件。
 
+## 8.1 Docker Compose 启动草案
+
+根目录已新增：
+
+- `docker-compose.yml`
+
+包含服务：
+
+- `mysql`
+- `redis`
+- `minio`
+- `api`
+- `admin-web`
+- `portal-web`
+
+启动命令：
+
+```bash
+docker compose up -d mysql redis minio
+docker compose run --rm api /main migrate -c /config/settings.yml
+docker compose up -d api admin-web portal-web
+```
+
+访问地址：
+
+- 后端 API：`http://127.0.0.1:8000`
+- 后台前端：`http://127.0.0.1:18080`
+- 门户前端：`http://127.0.0.1:18081`
+- MinIO Console：`http://127.0.0.1:9001`
+
+默认 MinIO 账号：
+
+- 用户名：`minioadmin`
+- 密码：`minioadmin`
+
+说明：
+
+- 当前环境未安装 Docker CLI，以上命令尚未在本机验证。
+- 后端容器使用 `go-admin/config/settings.docker.yml`。
+- Docker 环境数据库名为 `go_admin_edu`。
+
 ## 9. 默认账号
 
 基础 SQL 中已包含管理员账号初始化数据。
@@ -274,16 +328,16 @@ http://127.0.0.1:1799
 
 - 直接使用 `config/settings.yml`
 
-### 12.2 Docker Compose 不能直接起完整环境
+### 12.2 Docker Compose 尚未在当前机器验证
 
 原因：
 
-- 当前 `go-admin/docker-compose.yml` 只定义了后端容器。
+- 当前机器无法识别 `docker` 命令。
 
 处理方式：
 
-- 本地开发请先手动启动 MySQL。
-- 后续需要补齐 MySQL、Redis、MinIO、前端服务的 Compose 配置。
+- 在已安装 Docker Desktop 或 Docker Engine 的机器上执行 `docker compose config`。
+- 再按第 8.1 节执行启动和迁移。
 
 ### 12.3 迁移成功但前端仍无法访问数据
 
@@ -298,7 +352,7 @@ http://127.0.0.1:1799
 
 为了让该项目具备可重复部署能力，建议下一步补齐以下内容：
 
-1. 根目录统一 `docker-compose.yml`，包含 MySQL、Redis、MinIO、后端、admin、portal。
+1. 在有 Docker 的机器上验证根目录 `docker-compose.yml`。
 2. 增加环境拆分配置：本地、测试、生产。
 3. 为前端增加 `.env` 配置，而不是将后端地址完全写死在 Vite 配置中。
 4. 为数据库初始化增加部署脚本或 Makefile 命令，减少人工步骤。

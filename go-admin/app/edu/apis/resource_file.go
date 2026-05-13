@@ -1,13 +1,20 @@
 package apis
 
 import (
+	"fmt"
 	"go-admin/app/edu/models"
 	"go-admin/common/dto"
+	"go-admin/common/objectstorage"
+	"path/filepath"
+	"strconv"
+	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/gin-gonic/gin/binding"
 	"github.com/go-admin-team/go-admin-core/sdk/api"
 	"github.com/go-admin-team/go-admin-core/sdk/pkg/jwtauth/user"
+	"github.com/google/uuid"
 )
 
 type EduResourceFile struct {
@@ -59,6 +66,64 @@ func (e EduResourceFile) Insert(c *gin.Context) {
 		return
 	}
 	e.OK(req.Id, "创建成功")
+}
+
+func (e EduResourceFile) Upload(c *gin.Context) {
+	if err := e.MakeContext(c).MakeOrm().Errors; err != nil {
+		e.Error(500, err, err.Error())
+		return
+	}
+	multipartFile, err := c.FormFile("file")
+	if err != nil {
+		e.Error(400, err, "文件不能为空")
+		return
+	}
+	file, err := multipartFile.Open()
+	if err != nil {
+		e.Error(500, err, "读取文件失败")
+		return
+	}
+	defer file.Close()
+
+	storage, err := objectstorage.NewFromExtend()
+	if err != nil {
+		e.Error(500, err, "对象存储未配置")
+		return
+	}
+	if err := storage.EnsureBucket(c.Request.Context()); err != nil {
+		e.Error(500, err, "初始化存储桶失败")
+		return
+	}
+
+	resourceId, _ := strconv.Atoi(c.PostForm("resourceId"))
+	usage := c.DefaultPostForm("usage", "attachment")
+	ext := strings.ToLower(filepath.Ext(multipartFile.Filename))
+	objectKey := fmt.Sprintf("tenant/%d/resource/%s/%s%s", 0, time.Now().Format("2006/01"), uuid.New().String(), ext)
+	contentType := multipartFile.Header.Get("Content-Type")
+	if contentType == "" {
+		contentType = "application/octet-stream"
+	}
+	if err := storage.PutObject(c.Request.Context(), objectKey, file, multipartFile.Size, contentType); err != nil {
+		e.Error(500, err, "文件上传失败")
+		return
+	}
+
+	record := models.EduResourceFile{
+		ResourceId:   resourceId,
+		OriginalName: multipartFile.Filename,
+		ObjectKey:    objectKey,
+		Bucket:       storage.BucketName(),
+		ContentType:  contentType,
+		Ext:          strings.TrimPrefix(ext, "."),
+		Size:         multipartFile.Size,
+		Usage:        usage,
+	}
+	record.SetCreateBy(user.GetUserId(c))
+	if err := e.Orm.Create(&record).Error; err != nil {
+		e.Error(500, err, "文件记录保存失败")
+		return
+	}
+	e.OK(record, "上传成功")
 }
 
 func (e EduResourceFile) Delete(c *gin.Context) {

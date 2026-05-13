@@ -58,6 +58,7 @@ func registerResourceRouter(v1 *gin.RouterGroup, authMiddleware *jwt.GinJWTMiddl
 	files := v1.Group("/edu/resource-files").Use(authMiddleware.MiddlewareFunc()).Use(middleware.AuthCheckRole())
 	{
 		files.GET("", fileApi.GetPage)
+		files.POST("/upload", fileApi.Upload)
 		files.POST("", fileApi.Insert)
 		files.DELETE("", fileApi.Delete)
 	}

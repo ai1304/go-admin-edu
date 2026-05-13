@@ -1,22 +1,12 @@
-FROM registry.cn-shanghai.aliyuncs.com/lwmeng/node:lts-alpine as build-stage
+FROM node:22-alpine AS build-stage
 WORKDIR /app
-COPY package*.json ./
-RUN npm install -g cnpm --registry=https://registry.npmmirror.com
-RUN cnpm install
+RUN corepack enable
+COPY package.json pnpm-lock.yaml ./
+RUN pnpm install --frozen-lockfile
 COPY . .
-<<<<<<< HEAD
-RUN npm run build:prod
-=======
-RUN npm run build
->>>>>>> c783a6ef305ea32ac430b5826a7a13ab5898515d
+RUN pnpm build
 
-# production stage
-FROM registry.cn-shanghai.aliyuncs.com/lwmeng/nginx
+FROM nginx:1.27-alpine
 COPY --from=build-stage /app/dist /usr/share/nginx/html
-
 EXPOSE 80
-<<<<<<< HEAD
 CMD ["nginx", "-g", "daemon off;"]
-=======
-CMD ["nginx", "-g", "daemon off;"]
->>>>>>> c783a6ef305ea32ac430b5826a7a13ab5898515d
