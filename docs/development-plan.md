@@ -447,6 +447,7 @@
 - 后端新增 `app/edu` 业务模块。
 - 后端新增模型：区域、学校、资源分类、资源标签、资源、资源文件、资源审核。
 - 后端新增迁移：`go-admin/cmd/migrate/migration/version/2026051200010_edu_tables.go`。
+- 新增启动与部署说明文档：`docs/deployment-guide.md`。
 - 后端新增后台管理接口：
   - `/api/v1/edu/regions`
   - `/api/v1/edu/schools`
