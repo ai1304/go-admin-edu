@@ -22,3 +22,18 @@ export function removeExperts(data) {
   return request({ url, method: 'delete', data });
 }
 
+export function getExpertResources(expertId) {
+  return request({ url: `${url}/${expertId}/resources`, method: 'get' });
+}
+
+export function addExpertResource(expertId, data) {
+  return request({ url: `${url}/${expertId}/resources`, method: 'post', data });
+}
+
+export function updateExpertResource(expertId, resourceId, data) {
+  return request({ url: `${url}/${expertId}/resources/${resourceId}`, method: 'put', data });
+}
+
+export function removeExpertResources(expertId, data) {
+  return request({ url: `${url}/${expertId}/resources`, method: 'delete', data });
+}

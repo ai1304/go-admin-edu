@@ -31,6 +31,10 @@ func registerExpertRouter(v1 *gin.RouterGroup, authMiddleware *jwt.GinJWTMiddlew
 		r.POST("", api.Insert)
 		r.PUT("/:id", api.Update)
 		r.DELETE("", api.Delete)
+		r.GET("/:id/resources", api.GetResources)
+		r.POST("/:id/resources", api.InsertResource)
+		r.PUT("/:id/resources/:resourceId", api.UpdateResource)
+		r.DELETE("/:id/resources", api.DeleteResources)
 	}
 }
 

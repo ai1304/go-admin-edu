@@ -98,7 +98,9 @@ func (e EduExpert) PublicGet(c *gin.Context) {
 		e.Error(404, err, "专家不存在")
 		return
 	}
-	e.OK(data, "查询成功")
+	resources := make([]models.EduExpertResource, 0)
+	_ = e.Orm.Where("expert_id = ? and status = ?", data.Id, 1).Order("id desc").Find(&resources).Error
+	e.OK(gin.H{"expert": data, "resources": resources}, "查询成功")
 }
 
 func (e EduExpert) Insert(c *gin.Context) {
@@ -141,6 +143,74 @@ func (e EduExpert) Delete(c *gin.Context) {
 		return
 	}
 	if err := e.Orm.Delete(&models.EduExpert{}, req.Ids).Error; err != nil {
+		e.Error(500, err, "删除失败")
+		return
+	}
+	e.OK(req.Ids, "删除成功")
+}
+
+func (e EduExpert) GetResources(c *gin.Context) {
+	if err := e.MakeContext(c).MakeOrm().Errors; err != nil {
+		e.Error(500, err, err.Error())
+		return
+	}
+	list := make([]models.EduExpertResource, 0)
+	if err := e.Orm.Where("expert_id = ?", c.Param("id")).Order("id desc").Find(&list).Error; err != nil {
+		e.Error(500, err, "查询失败")
+		return
+	}
+	e.OK(list, "查询成功")
+}
+
+func (e EduExpert) InsertResource(c *gin.Context) {
+	req := models.EduExpertResource{}
+	if err := e.MakeContext(c).MakeOrm().Bind(&req, binding.JSON).Errors; err != nil {
+		e.Error(500, err, err.Error())
+		return
+	}
+	req.ExpertId = parsePathId(c.Param("id"))
+	req.SetCreateBy(user.GetUserId(c))
+	if err := e.Orm.Select("ExpertId", "Title", "Type", "ResourceId", "CourseId", "FileId", "Status", "CreateBy").Create(&req).Error; err != nil {
+		e.Error(500, err, "创建失败")
+		return
+	}
+	e.OK(req.Id, "创建成功")
+}
+
+func (e EduExpert) UpdateResource(c *gin.Context) {
+	req := models.EduExpertResource{}
+	if err := e.MakeContext(c).MakeOrm().Bind(&req, binding.JSON).Errors; err != nil {
+		e.Error(500, err, err.Error())
+		return
+	}
+	req.SetUpdateBy(user.GetUserId(c))
+	updates := map[string]interface{}{
+		"title":       req.Title,
+		"type":        req.Type,
+		"resource_id": req.ResourceId,
+		"course_id":   req.CourseId,
+		"file_id":     req.FileId,
+		"status":      req.Status,
+		"update_by":   req.UpdateBy,
+	}
+	if err := e.Orm.Model(&models.EduExpertResource{}).
+		Where("id = ? and expert_id = ?", c.Param("resourceId"), c.Param("id")).
+		Updates(updates).Error; err != nil {
+		e.Error(500, err, "更新失败")
+		return
+	}
+	e.OK(c.Param("resourceId"), "更新成功")
+}
+
+func (e EduExpert) DeleteResources(c *gin.Context) {
+	req := struct {
+		Ids []int `json:"ids"`
+	}{}
+	if err := e.MakeContext(c).MakeOrm().Bind(&req, binding.JSON).Errors; err != nil {
+		e.Error(500, err, err.Error())
+		return
+	}
+	if err := e.Orm.Where("expert_id = ?", c.Param("id")).Delete(&models.EduExpertResource{}, req.Ids).Error; err != nil {
 		e.Error(500, err, "删除失败")
 		return
 	}
