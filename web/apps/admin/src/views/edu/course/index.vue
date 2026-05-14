@@ -64,6 +64,20 @@
               </a-select>
             </a-form-item>
           </a-col>
+          <a-col :span="12">
+            <a-form-item field="stageCategoryId" label="学段">
+              <a-select v-model="formModel.stageCategoryId" allow-clear placeholder="请选择学段">
+                <a-option v-for="item in getCategoryOptions('stage')" :key="item.id" :value="item.id">{{ item.name }}</a-option>
+              </a-select>
+            </a-form-item>
+          </a-col>
+          <a-col :span="12">
+            <a-form-item field="disabilityTypeId" label="障碍类型">
+              <a-select v-model="formModel.disabilityTypeId" allow-clear placeholder="请选择障碍类型">
+                <a-option v-for="item in getCategoryOptions('disability')" :key="item.id" :value="item.id">{{ item.name }}</a-option>
+              </a-select>
+            </a-form-item>
+          </a-col>
           <a-col :span="24">
             <a-form-item field="summary" label="课程简介">
               <a-textarea v-model="formModel.summary" :auto-size="{ minRows: 3, maxRows: 5 }" placeholder="请输入课程简介" />
@@ -84,6 +98,7 @@
 import { Message, Modal } from '@arco-design/web-vue';
 import { onMounted, reactive, ref } from 'vue';
 import { addCourse, getCourses, removeCourses, updateCourse } from '@/api/edu/course';
+import { getResourceCategories } from '@/api/edu/resource';
 
 const statusOptions = [
   { label: '草稿', value: 'draft' },
@@ -97,6 +112,7 @@ const tableData = ref([]);
 const pagination = reactive({ current: 1, pageSize: 10, total: 0 });
 const formVisible = ref(false);
 const formModel = reactive(defaultForm());
+const categoryOptions = reactive({});
 
 const columns = [
   { title: '课程标题', dataIndex: 'title', ellipsis: true, tooltip: true },
@@ -108,7 +124,17 @@ const columns = [
 ];
 
 function defaultForm() {
-  return { id: undefined, title: '', summary: '', teacherName: '', difficulty: '', objectives: '', status: 'draft' };
+  return {
+    id: undefined,
+    title: '',
+    summary: '',
+    teacherName: '',
+    difficulty: '',
+    objectives: '',
+    status: 'draft',
+    stageCategoryId: undefined,
+    disabilityTypeId: undefined
+  };
 }
 
 function assignForm(data = {}) {
@@ -120,6 +146,24 @@ async function fetchData() {
   const payload = res.data || {};
   tableData.value = payload.list || payload || [];
   pagination.total = payload.count || res.total || 0;
+}
+
+async function fetchCategories() {
+  const res = await getResourceCategories({ pageIndex: 1, pageSize: 1000, status: 1 });
+  const payload = res.data || {};
+  const list = payload.list || payload || [];
+  categoryOptions.stage = [];
+  categoryOptions.disability = [];
+  list.forEach((item) => {
+    if (!categoryOptions[item.type]) {
+      categoryOptions[item.type] = [];
+    }
+    categoryOptions[item.type].push(item);
+  });
+}
+
+function getCategoryOptions(type) {
+  return categoryOptions[type] || [];
 }
 
 function handlePageChange(page) {
@@ -174,7 +218,10 @@ function handleDelete(record) {
   });
 }
 
-onMounted(fetchData);
+onMounted(() => {
+  fetchData();
+  fetchCategories();
+});
 </script>
 
 <style scoped>

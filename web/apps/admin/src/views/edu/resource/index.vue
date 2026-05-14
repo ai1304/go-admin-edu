@@ -64,6 +64,41 @@
               <a-input-number v-model="formModel.schoolId" :min="0" placeholder="请输入学校 ID" style="width: 100%" />
             </a-form-item>
           </a-col>
+          <a-col :span="12">
+            <a-form-item field="stageCategoryId" label="学段">
+              <a-select v-model="formModel.stageCategoryId" allow-clear placeholder="请选择学段">
+                <a-option v-for="item in getCategoryOptions('stage')" :key="item.id" :value="item.id">{{ item.name }}</a-option>
+              </a-select>
+            </a-form-item>
+          </a-col>
+          <a-col :span="12">
+            <a-form-item field="disabilityTypeId" label="障碍类型">
+              <a-select v-model="formModel.disabilityTypeId" allow-clear placeholder="请选择障碍类型">
+                <a-option v-for="item in getCategoryOptions('disability')" :key="item.id" :value="item.id">{{ item.name }}</a-option>
+              </a-select>
+            </a-form-item>
+          </a-col>
+          <a-col :span="12">
+            <a-form-item field="resourceTypeId" label="资源类型">
+              <a-select v-model="formModel.resourceTypeId" allow-clear placeholder="请选择资源类型">
+                <a-option v-for="item in getCategoryOptions('resource_type')" :key="item.id" :value="item.id">{{ item.name }}</a-option>
+              </a-select>
+            </a-form-item>
+          </a-col>
+          <a-col :span="12">
+            <a-form-item field="abilityDomainId" label="能力领域">
+              <a-select v-model="formModel.abilityDomainId" allow-clear placeholder="请选择能力领域">
+                <a-option v-for="item in getCategoryOptions('ability_domain')" :key="item.id" :value="item.id">{{ item.name }}</a-option>
+              </a-select>
+            </a-form-item>
+          </a-col>
+          <a-col :span="12">
+            <a-form-item field="topicCategoryId" label="专题分类">
+              <a-select v-model="formModel.topicCategoryId" allow-clear placeholder="请选择专题分类">
+                <a-option v-for="item in getCategoryOptions('topic')" :key="item.id" :value="item.id">{{ item.name }}</a-option>
+              </a-select>
+            </a-form-item>
+          </a-col>
           <a-col :span="24">
             <a-form-item field="keywords" label="关键词">
               <a-input v-model="formModel.keywords" placeholder="多个关键词用逗号分隔" />
@@ -100,6 +135,7 @@ import { Message, Modal } from '@arco-design/web-vue';
 import { onMounted, reactive, ref } from 'vue';
 import {
   addResource,
+  getResourceCategories,
   getResourceFiles,
   getResources,
   removeResourceFiles,
@@ -129,6 +165,7 @@ const fileInput = ref(null);
 const fileList = ref([]);
 const currentResource = ref(null);
 const formModel = reactive(defaultForm());
+const categoryOptions = reactive({});
 
 const columns = [
   { title: '资源标题', dataIndex: 'title', ellipsis: true, tooltip: true },
@@ -154,7 +191,12 @@ function defaultForm() {
     authorName: '',
     keywords: '',
     status: 'draft',
-    schoolId: 0
+    schoolId: 0,
+    stageCategoryId: undefined,
+    disabilityTypeId: undefined,
+    resourceTypeId: undefined,
+    abilityDomainId: undefined,
+    topicCategoryId: undefined
   };
 }
 
@@ -171,6 +213,27 @@ async function fetchData() {
   const payload = getPagePayload(res);
   tableData.value = payload.list || payload || [];
   pagination.total = payload.count || res.total || 0;
+}
+
+async function fetchCategories() {
+  const res = await getResourceCategories({ pageIndex: 1, pageSize: 1000, status: 1 });
+  const payload = getPagePayload(res);
+  const list = payload.list || payload || [];
+  categoryOptions.stage = [];
+  categoryOptions.disability = [];
+  categoryOptions.resource_type = [];
+  categoryOptions.ability_domain = [];
+  categoryOptions.topic = [];
+  list.forEach((item) => {
+    if (!categoryOptions[item.type]) {
+      categoryOptions[item.type] = [];
+    }
+    categoryOptions[item.type].push(item);
+  });
+}
+
+function getCategoryOptions(type) {
+  return categoryOptions[type] || [];
 }
 
 function handlePageChange(page) {
@@ -285,7 +348,10 @@ function formatSize(size = 0) {
   return `${(size / 1024 / 1024).toFixed(1)} MB`;
 }
 
-onMounted(fetchData);
+onMounted(() => {
+  fetchData();
+  fetchCategories();
+});
 </script>
 
 <style scoped>
