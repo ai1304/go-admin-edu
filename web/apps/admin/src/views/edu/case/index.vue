@@ -29,6 +29,7 @@
         <template #operations="{ record }">
           <a-space>
             <a-button type="text" size="small" @click="openEdit(record)">编辑</a-button>
+            <a-button type="text" size="small" @click="openManage(record)">业务管理</a-button>
             <a-button type="text" status="danger" size="small" @click="handleDelete(record)">删除</a-button>
           </a-space>
         </template>
@@ -86,26 +87,189 @@
         </a-row>
       </a-form>
     </a-modal>
+
+    <a-modal v-model:visible="manageVisible" :title="`${currentCase?.title || ''} 业务管理`" width="1040px" :footer="false">
+      <a-tabs default-active-key="ieps">
+        <a-tab-pane key="ieps" title="IEP">
+          <a-space direction="vertical" fill>
+            <a-button type="primary" status="success" @click="openIepCreate">新增 IEP</a-button>
+            <a-table :columns="iepColumns" :data="iepList" :pagination="false" row-key="id">
+              <template #status="{ record }">
+                <a-tag :color="subStatusColor[record.status]">{{ subStatusText[record.status] || record.status }}</a-tag>
+              </template>
+              <template #operations="{ record }">
+                <a-space>
+                  <a-button type="text" size="small" @click="openIepEdit(record)">编辑</a-button>
+                  <a-button type="text" status="danger" size="small" @click="handleIepDelete(record)">删除</a-button>
+                </a-space>
+              </template>
+            </a-table>
+          </a-space>
+        </a-tab-pane>
+        <a-tab-pane key="assessments" title="评估记录">
+          <a-space direction="vertical" fill>
+            <a-button type="primary" status="success" @click="openAssessmentCreate">新增评估</a-button>
+            <a-table :columns="assessmentColumns" :data="assessmentList" :pagination="false" row-key="id">
+              <template #operations="{ record }">
+                <a-space>
+                  <a-button type="text" size="small" @click="openAssessmentEdit(record)">编辑</a-button>
+                  <a-button type="text" status="danger" size="small" @click="handleAssessmentDelete(record)">删除</a-button>
+                </a-space>
+              </template>
+            </a-table>
+          </a-space>
+        </a-tab-pane>
+        <a-tab-pane key="interventions" title="干预方案">
+          <a-space direction="vertical" fill>
+            <a-button type="primary" status="success" @click="openInterventionCreate">新增干预</a-button>
+            <a-table :columns="interventionColumns" :data="interventionList" :pagination="false" row-key="id">
+              <template #status="{ record }">
+                <a-tag :color="interventionStatusColor[record.status]">{{ interventionStatusText[record.status] || record.status }}</a-tag>
+              </template>
+              <template #operations="{ record }">
+                <a-space>
+                  <a-button type="text" size="small" @click="openInterventionEdit(record)">编辑</a-button>
+                  <a-button type="text" status="danger" size="small" @click="handleInterventionDelete(record)">删除</a-button>
+                </a-space>
+              </template>
+            </a-table>
+          </a-space>
+        </a-tab-pane>
+      </a-tabs>
+    </a-modal>
+
+    <a-modal v-model:visible="iepVisible" :title="iepModel.id ? '编辑 IEP' : '新增 IEP'" width="760px" @before-ok="handleIepSave">
+      <a-form :model="iepModel" layout="vertical">
+        <a-form-item field="title" label="IEP 标题" required>
+          <a-input v-model="iepModel.title" placeholder="请输入 IEP 标题" />
+        </a-form-item>
+        <a-form-item field="goal" label="目标">
+          <a-textarea v-model="iepModel.goal" :auto-size="{ minRows: 3, maxRows: 6 }" placeholder="请输入阶段目标" />
+        </a-form-item>
+        <a-form-item field="plan" label="计划">
+          <a-textarea v-model="iepModel.plan" :auto-size="{ minRows: 3, maxRows: 6 }" placeholder="请输入实施计划" />
+        </a-form-item>
+        <a-form-item field="evaluation" label="评价">
+          <a-textarea v-model="iepModel.evaluation" :auto-size="{ minRows: 3, maxRows: 6 }" placeholder="请输入评价记录" />
+        </a-form-item>
+        <a-form-item field="status" label="状态">
+          <a-select v-model="iepModel.status">
+            <a-option v-for="item in subStatusOptions" :key="item.value" :value="item.value">{{ item.label }}</a-option>
+          </a-select>
+        </a-form-item>
+      </a-form>
+    </a-modal>
+
+    <a-modal v-model:visible="assessmentVisible" :title="assessmentModel.id ? '编辑评估' : '新增评估'" width="680px" @before-ok="handleAssessmentSave">
+      <a-form :model="assessmentModel" layout="vertical">
+        <a-form-item field="toolName" label="评估工具" required>
+          <a-input v-model="assessmentModel.toolName" placeholder="请输入评估工具或量表名称" />
+        </a-form-item>
+        <a-form-item field="assessedAt" label="评估时间">
+          <a-input v-model="assessmentModel.assessedAt" placeholder="例如 2026-05-15" />
+        </a-form-item>
+        <a-form-item field="result" label="评估结果">
+          <a-textarea v-model="assessmentModel.result" :auto-size="{ minRows: 4, maxRows: 8 }" placeholder="请输入评估结果" />
+        </a-form-item>
+      </a-form>
+    </a-modal>
+
+    <a-modal
+      v-model:visible="interventionVisible"
+      :title="interventionModel.id ? '编辑干预方案' : '新增干预方案'"
+      width="760px"
+      @before-ok="handleInterventionSave"
+    >
+      <a-form :model="interventionModel" layout="vertical">
+        <a-form-item field="title" label="干预标题" required>
+          <a-input v-model="interventionModel.title" placeholder="请输入干预标题" />
+        </a-form-item>
+        <a-row :gutter="16">
+          <a-col :span="8">
+            <a-form-item field="startDate" label="开始日期">
+              <a-input v-model="interventionModel.startDate" placeholder="例如 2026-05-15" />
+            </a-form-item>
+          </a-col>
+          <a-col :span="8">
+            <a-form-item field="endDate" label="结束日期">
+              <a-input v-model="interventionModel.endDate" placeholder="例如 2026-06-15" />
+            </a-form-item>
+          </a-col>
+          <a-col :span="8">
+            <a-form-item field="status" label="状态">
+              <a-select v-model="interventionModel.status">
+                <a-option v-for="item in interventionStatusOptions" :key="item.value" :value="item.value">{{ item.label }}</a-option>
+              </a-select>
+            </a-form-item>
+          </a-col>
+        </a-row>
+        <a-form-item field="content" label="干预内容">
+          <a-textarea v-model="interventionModel.content" :auto-size="{ minRows: 4, maxRows: 8 }" placeholder="请输入干预内容" />
+        </a-form-item>
+      </a-form>
+    </a-modal>
   </div>
 </template>
 
 <script setup>
 import { Message, Modal } from '@arco-design/web-vue';
 import { onMounted, reactive, ref } from 'vue';
-import { addCase, getCases, removeCases, updateCase } from '@/api/edu/case';
+import {
+  addCase,
+  addCaseAssessment,
+  addCaseIep,
+  addCaseIntervention,
+  getCaseAssessments,
+  getCaseIeps,
+  getCaseInterventions,
+  getCases,
+  removeCaseAssessments,
+  removeCaseIeps,
+  removeCaseInterventions,
+  removeCases,
+  updateCase,
+  updateCaseAssessment,
+  updateCaseIep,
+  updateCaseIntervention
+} from '@/api/edu/case';
 
 const statusOptions = [
   { label: '草稿', value: 'draft' },
   { label: '审核中', value: 'reviewing' },
   { label: '已归档', value: 'archived' }
 ];
+const subStatusOptions = [
+  { label: '草稿', value: 'draft' },
+  { label: '执行中', value: 'active' },
+  { label: '已完成', value: 'finished' }
+];
+const interventionStatusOptions = [
+  { label: '执行中', value: 'active' },
+  { label: '暂停', value: 'paused' },
+  { label: '已完成', value: 'finished' }
+];
 const statusText = Object.fromEntries(statusOptions.map((item) => [item.value, item.label]));
 const statusColor = { draft: 'gray', reviewing: 'orange', archived: 'blue' };
+const subStatusText = Object.fromEntries(subStatusOptions.map((item) => [item.value, item.label]));
+const subStatusColor = { draft: 'gray', active: 'green', finished: 'blue' };
+const interventionStatusText = Object.fromEntries(interventionStatusOptions.map((item) => [item.value, item.label]));
+const interventionStatusColor = { active: 'green', paused: 'orange', finished: 'blue' };
 const queryForm = reactive({ keyword: '', status: '', pageIndex: 1, pageSize: 10 });
 const tableData = ref([]);
 const pagination = reactive({ current: 1, pageSize: 10, total: 0 });
 const formVisible = ref(false);
+const manageVisible = ref(false);
+const iepVisible = ref(false);
+const assessmentVisible = ref(false);
+const interventionVisible = ref(false);
+const currentCase = ref(null);
 const formModel = reactive(defaultForm());
+const iepModel = reactive(defaultIepForm());
+const assessmentModel = reactive(defaultAssessmentForm());
+const interventionModel = reactive(defaultInterventionForm());
+const iepList = ref([]);
+const assessmentList = ref([]);
+const interventionList = ref([]);
 
 const columns = [
   { title: '案例名称', dataIndex: 'title', ellipsis: true, tooltip: true },
@@ -113,6 +277,24 @@ const columns = [
   { title: '学生编号', dataIndex: 'studentCode', width: 130 },
   { title: '障碍类型', dataIndex: 'disabilityType', width: 130 },
   { title: '状态', slotName: 'status', width: 110 },
+  { title: '操作', slotName: 'operations', width: 220 }
+];
+const iepColumns = [
+  { title: 'IEP 标题', dataIndex: 'title', ellipsis: true, tooltip: true },
+  { title: '状态', slotName: 'status', width: 100 },
+  { title: '操作', slotName: 'operations', width: 150 }
+];
+const assessmentColumns = [
+  { title: '评估工具', dataIndex: 'toolName', width: 180 },
+  { title: '评估时间', dataIndex: 'assessedAt', width: 130 },
+  { title: '评估结果', dataIndex: 'result', ellipsis: true, tooltip: true },
+  { title: '操作', slotName: 'operations', width: 150 }
+];
+const interventionColumns = [
+  { title: '干预标题', dataIndex: 'title', ellipsis: true, tooltip: true },
+  { title: '开始日期', dataIndex: 'startDate', width: 120 },
+  { title: '结束日期', dataIndex: 'endDate', width: 120 },
+  { title: '状态', slotName: 'status', width: 100 },
   { title: '操作', slotName: 'operations', width: 150 }
 ];
 
@@ -128,6 +310,18 @@ function defaultForm() {
     summary: '',
     status: 'draft'
   };
+}
+
+function defaultIepForm() {
+  return { id: undefined, title: '', goal: '', plan: '', evaluation: '', status: 'draft' };
+}
+
+function defaultAssessmentForm() {
+  return { id: undefined, toolName: '', result: '', assessedAt: '' };
+}
+
+function defaultInterventionForm() {
+  return { id: undefined, title: '', content: '', startDate: '', endDate: '', status: 'active' };
 }
 
 function assignForm(data = {}) {
@@ -189,6 +383,138 @@ function handleDelete(record) {
       await removeCases({ ids: [record.id] });
       Message.success('删除成功');
       fetchData();
+    }
+  });
+}
+
+async function openManage(record) {
+  currentCase.value = record;
+  manageVisible.value = true;
+  await fetchManageData();
+}
+
+async function fetchManageData() {
+  if (!currentCase.value?.id) return;
+  const [iepsRes, assessmentsRes, interventionsRes] = await Promise.all([
+    getCaseIeps(currentCase.value.id),
+    getCaseAssessments(currentCase.value.id),
+    getCaseInterventions(currentCase.value.id)
+  ]);
+  iepList.value = iepsRes.data || [];
+  assessmentList.value = assessmentsRes.data || [];
+  interventionList.value = interventionsRes.data || [];
+}
+
+function openIepCreate() {
+  Object.assign(iepModel, defaultIepForm());
+  iepVisible.value = true;
+}
+
+function openIepEdit(record) {
+  Object.assign(iepModel, defaultIepForm(), record);
+  iepVisible.value = true;
+}
+
+async function handleIepSave() {
+  if (!iepModel.title) {
+    Message.warning('请输入 IEP 标题');
+    return false;
+  }
+  const payload = { ...iepModel };
+  if (payload.id) {
+    await updateCaseIep(currentCase.value.id, payload.id, payload);
+  } else {
+    await addCaseIep(currentCase.value.id, payload);
+  }
+  Message.success('保存成功');
+  iepVisible.value = false;
+  fetchManageData();
+}
+
+function handleIepDelete(record) {
+  Modal.confirm({
+    title: '确认删除 IEP',
+    content: `确定删除「${record.title}」吗？`,
+    async onOk() {
+      await removeCaseIeps(currentCase.value.id, { ids: [record.id] });
+      Message.success('删除成功');
+      fetchManageData();
+    }
+  });
+}
+
+function openAssessmentCreate() {
+  Object.assign(assessmentModel, defaultAssessmentForm());
+  assessmentVisible.value = true;
+}
+
+function openAssessmentEdit(record) {
+  Object.assign(assessmentModel, defaultAssessmentForm(), record);
+  assessmentVisible.value = true;
+}
+
+async function handleAssessmentSave() {
+  if (!assessmentModel.toolName) {
+    Message.warning('请输入评估工具');
+    return false;
+  }
+  const payload = { ...assessmentModel };
+  if (payload.id) {
+    await updateCaseAssessment(currentCase.value.id, payload.id, payload);
+  } else {
+    await addCaseAssessment(currentCase.value.id, payload);
+  }
+  Message.success('保存成功');
+  assessmentVisible.value = false;
+  fetchManageData();
+}
+
+function handleAssessmentDelete(record) {
+  Modal.confirm({
+    title: '确认删除评估记录',
+    content: `确定删除「${record.toolName}」吗？`,
+    async onOk() {
+      await removeCaseAssessments(currentCase.value.id, { ids: [record.id] });
+      Message.success('删除成功');
+      fetchManageData();
+    }
+  });
+}
+
+function openInterventionCreate() {
+  Object.assign(interventionModel, defaultInterventionForm());
+  interventionVisible.value = true;
+}
+
+function openInterventionEdit(record) {
+  Object.assign(interventionModel, defaultInterventionForm(), record);
+  interventionVisible.value = true;
+}
+
+async function handleInterventionSave() {
+  if (!interventionModel.title) {
+    Message.warning('请输入干预标题');
+    return false;
+  }
+  const payload = { ...interventionModel };
+  if (payload.id) {
+    await updateCaseIntervention(currentCase.value.id, payload.id, payload);
+  } else {
+    await addCaseIntervention(currentCase.value.id, payload);
+  }
+  Message.success('保存成功');
+  interventionVisible.value = false;
+  fetchManageData();
+}
+
+function handleInterventionDelete(record) {
+  Modal.confirm({
+    title: '确认删除干预方案',
+    content: `确定删除「${record.title}」吗？`,
+    async onOk() {
+      await removeCaseInterventions(currentCase.value.id, { ids: [record.id] });
+      Message.success('删除成功');
+      fetchManageData();
     }
   });
 }
