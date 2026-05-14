@@ -298,3 +298,216 @@ func (e EduCourse) DeleteLessons(c *gin.Context) {
 	}
 	e.OK(req.Ids, "删除成功")
 }
+
+func (e EduCourse) GetAssignments(c *gin.Context) {
+	if err := e.MakeContext(c).MakeOrm().Errors; err != nil {
+		e.Error(500, err, err.Error())
+		return
+	}
+	list := make([]models.EduAssignment, 0)
+	if err := e.Orm.Where("course_id = ?", c.Param("id")).Order("id desc").Find(&list).Error; err != nil {
+		e.Error(500, err, "查询失败")
+		return
+	}
+	e.OK(list, "查询成功")
+}
+
+func (e EduCourse) InsertAssignment(c *gin.Context) {
+	req := models.EduAssignment{}
+	if err := e.MakeContext(c).MakeOrm().Bind(&req, binding.JSON).Errors; err != nil {
+		e.Error(500, err, err.Error())
+		return
+	}
+	req.CourseId = parsePathId(c.Param("id"))
+	req.SetCreateBy(user.GetUserId(c))
+	if req.Status == 0 {
+		req.Status = 1
+	}
+	if err := e.Orm.Create(&req).Error; err != nil {
+		e.Error(500, err, "创建失败")
+		return
+	}
+	e.OK(req.Id, "创建成功")
+}
+
+func (e EduCourse) UpdateAssignment(c *gin.Context) {
+	req := models.EduAssignment{}
+	if err := e.MakeContext(c).MakeOrm().Bind(&req, binding.JSON).Errors; err != nil {
+		e.Error(500, err, err.Error())
+		return
+	}
+	req.SetUpdateBy(user.GetUserId(c))
+	updates := map[string]interface{}{
+		"title":     req.Title,
+		"content":   req.Content,
+		"status":    req.Status,
+		"update_by": req.UpdateBy,
+	}
+	if err := e.Orm.Model(&models.EduAssignment{}).
+		Where("id = ? and course_id = ?", c.Param("assignmentId"), c.Param("id")).
+		Updates(updates).Error; err != nil {
+		e.Error(500, err, "更新失败")
+		return
+	}
+	e.OK(c.Param("assignmentId"), "更新成功")
+}
+
+func (e EduCourse) DeleteAssignments(c *gin.Context) {
+	req := struct {
+		Ids []int `json:"ids"`
+	}{}
+	if err := e.MakeContext(c).MakeOrm().Bind(&req, binding.JSON).Errors; err != nil {
+		e.Error(500, err, err.Error())
+		return
+	}
+	if err := e.Orm.Where("course_id = ?", c.Param("id")).Delete(&models.EduAssignment{}, req.Ids).Error; err != nil {
+		e.Error(500, err, "删除失败")
+		return
+	}
+	e.OK(req.Ids, "删除成功")
+}
+
+func (e EduCourse) GetAssignmentSubmissions(c *gin.Context) {
+	if err := e.MakeContext(c).MakeOrm().Errors; err != nil {
+		e.Error(500, err, err.Error())
+		return
+	}
+	list := make([]models.EduAssignmentSubmission, 0)
+	if err := e.Orm.Where("course_id = ? and assignment_id = ?", c.Param("id"), c.Param("assignmentId")).Order("id desc").Find(&list).Error; err != nil {
+		e.Error(500, err, "查询失败")
+		return
+	}
+	e.OK(list, "查询成功")
+}
+
+func (e EduCourse) InsertAssignmentSubmission(c *gin.Context) {
+	req := models.EduAssignmentSubmission{}
+	if err := e.MakeContext(c).MakeOrm().Bind(&req, binding.JSON).Errors; err != nil {
+		e.Error(500, err, err.Error())
+		return
+	}
+	req.CourseId = parsePathId(c.Param("id"))
+	req.AssignmentId = parsePathId(c.Param("assignmentId"))
+	req.SetCreateBy(user.GetUserId(c))
+	if req.Status == "" {
+		req.Status = "submitted"
+	}
+	if err := e.Orm.Create(&req).Error; err != nil {
+		e.Error(500, err, "创建失败")
+		return
+	}
+	e.OK(req.Id, "创建成功")
+}
+
+func (e EduCourse) UpdateAssignmentSubmission(c *gin.Context) {
+	req := models.EduAssignmentSubmission{}
+	if err := e.MakeContext(c).MakeOrm().Bind(&req, binding.JSON).Errors; err != nil {
+		e.Error(500, err, err.Error())
+		return
+	}
+	req.SetUpdateBy(user.GetUserId(c))
+	updates := map[string]interface{}{
+		"user_id":   req.UserId,
+		"content":   req.Content,
+		"file_id":   req.FileId,
+		"score":     req.Score,
+		"status":    req.Status,
+		"update_by": req.UpdateBy,
+	}
+	if err := e.Orm.Model(&models.EduAssignmentSubmission{}).
+		Where("id = ? and course_id = ? and assignment_id = ?", c.Param("submissionId"), c.Param("id"), c.Param("assignmentId")).
+		Updates(updates).Error; err != nil {
+		e.Error(500, err, "更新失败")
+		return
+	}
+	e.OK(c.Param("submissionId"), "更新成功")
+}
+
+func (e EduCourse) DeleteAssignmentSubmissions(c *gin.Context) {
+	req := struct {
+		Ids []int `json:"ids"`
+	}{}
+	if err := e.MakeContext(c).MakeOrm().Bind(&req, binding.JSON).Errors; err != nil {
+		e.Error(500, err, err.Error())
+		return
+	}
+	if err := e.Orm.Where("course_id = ? and assignment_id = ?", c.Param("id"), c.Param("assignmentId")).
+		Delete(&models.EduAssignmentSubmission{}, req.Ids).Error; err != nil {
+		e.Error(500, err, "删除失败")
+		return
+	}
+	e.OK(req.Ids, "删除成功")
+}
+
+func (e EduCourse) GetLearningRecords(c *gin.Context) {
+	if err := e.MakeContext(c).MakeOrm().Errors; err != nil {
+		e.Error(500, err, err.Error())
+		return
+	}
+	list := make([]models.EduLearningRecord, 0)
+	db := e.Orm.Where("course_id = ?", c.Param("id"))
+	if lessonId := c.Query("lessonId"); lessonId != "" {
+		db = db.Where("lesson_id = ?", lessonId)
+	}
+	if err := db.Order("id desc").Find(&list).Error; err != nil {
+		e.Error(500, err, "查询失败")
+		return
+	}
+	e.OK(list, "查询成功")
+}
+
+func (e EduCourse) InsertLearningRecord(c *gin.Context) {
+	req := models.EduLearningRecord{}
+	if err := e.MakeContext(c).MakeOrm().Bind(&req, binding.JSON).Errors; err != nil {
+		e.Error(500, err, err.Error())
+		return
+	}
+	req.CourseId = parsePathId(c.Param("id"))
+	req.SetCreateBy(user.GetUserId(c))
+	if req.Status == "" {
+		req.Status = "learning"
+	}
+	if err := e.Orm.Create(&req).Error; err != nil {
+		e.Error(500, err, "创建失败")
+		return
+	}
+	e.OK(req.Id, "创建成功")
+}
+
+func (e EduCourse) UpdateLearningRecord(c *gin.Context) {
+	req := models.EduLearningRecord{}
+	if err := e.MakeContext(c).MakeOrm().Bind(&req, binding.JSON).Errors; err != nil {
+		e.Error(500, err, err.Error())
+		return
+	}
+	req.SetUpdateBy(user.GetUserId(c))
+	updates := map[string]interface{}{
+		"lesson_id": req.LessonId,
+		"user_id":   req.UserId,
+		"progress":  req.Progress,
+		"status":    req.Status,
+		"update_by": req.UpdateBy,
+	}
+	if err := e.Orm.Model(&models.EduLearningRecord{}).
+		Where("id = ? and course_id = ?", c.Param("recordId"), c.Param("id")).
+		Updates(updates).Error; err != nil {
+		e.Error(500, err, "更新失败")
+		return
+	}
+	e.OK(c.Param("recordId"), "更新成功")
+}
+
+func (e EduCourse) DeleteLearningRecords(c *gin.Context) {
+	req := struct {
+		Ids []int `json:"ids"`
+	}{}
+	if err := e.MakeContext(c).MakeOrm().Bind(&req, binding.JSON).Errors; err != nil {
+		e.Error(500, err, err.Error())
+		return
+	}
+	if err := e.Orm.Where("course_id = ?", c.Param("id")).Delete(&models.EduLearningRecord{}, req.Ids).Error; err != nil {
+		e.Error(500, err, "删除失败")
+		return
+	}
+	e.OK(req.Ids, "删除成功")
+}

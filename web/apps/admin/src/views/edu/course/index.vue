@@ -129,6 +129,41 @@
             </a-table>
           </a-space>
         </a-tab-pane>
+        <a-tab-pane key="assignments" title="作业">
+          <a-space direction="vertical" fill>
+            <a-button type="primary" status="success" @click="openAssignmentCreate">新增作业</a-button>
+            <a-table :columns="assignmentColumns" :data="assignmentList" :pagination="false" row-key="id">
+              <template #status="{ record }">
+                <a-tag :color="record.status === 1 ? 'green' : 'gray'">{{ record.status === 1 ? '启用' : '停用' }}</a-tag>
+              </template>
+              <template #operations="{ record }">
+                <a-space>
+                  <a-button type="text" size="small" @click="openAssignmentEdit(record)">编辑</a-button>
+                  <a-button type="text" size="small" @click="openSubmissions(record)">提交</a-button>
+                  <a-button type="text" status="danger" size="small" @click="handleAssignmentDelete(record)">删除</a-button>
+                </a-space>
+              </template>
+            </a-table>
+          </a-space>
+        </a-tab-pane>
+        <a-tab-pane key="records" title="学习记录">
+          <a-space direction="vertical" fill>
+            <a-button type="primary" status="success" @click="openRecordCreate">新增学习记录</a-button>
+            <a-table :columns="recordColumns" :data="recordList" :pagination="false" row-key="id">
+              <template #lesson="{ record }">{{ lessonName(record.lessonId) }}</template>
+              <template #progress="{ record }">{{ record.progress }}%</template>
+              <template #status="{ record }">
+                <a-tag :color="recordStatusColor[record.status]">{{ recordStatusText[record.status] || record.status }}</a-tag>
+              </template>
+              <template #operations="{ record }">
+                <a-space>
+                  <a-button type="text" size="small" @click="openRecordEdit(record)">编辑</a-button>
+                  <a-button type="text" status="danger" size="small" @click="handleRecordDelete(record)">删除</a-button>
+                </a-space>
+              </template>
+            </a-table>
+          </a-space>
+        </a-tab-pane>
       </a-tabs>
     </a-modal>
 
@@ -194,6 +229,106 @@
         </a-row>
       </a-form>
     </a-modal>
+
+    <a-modal v-model:visible="assignmentVisible" :title="assignmentModel.id ? '编辑作业' : '新增作业'" width="680px" @before-ok="handleAssignmentSave">
+      <a-form :model="assignmentModel" layout="vertical">
+        <a-form-item field="title" label="作业标题" required>
+          <a-input v-model="assignmentModel.title" placeholder="请输入作业标题" />
+        </a-form-item>
+        <a-form-item field="content" label="作业内容">
+          <a-textarea v-model="assignmentModel.content" :auto-size="{ minRows: 4, maxRows: 8 }" placeholder="请输入作业内容" />
+        </a-form-item>
+        <a-form-item field="status" label="状态">
+          <a-select v-model="assignmentModel.status">
+            <a-option :value="1">启用</a-option>
+            <a-option :value="0">停用</a-option>
+          </a-select>
+        </a-form-item>
+      </a-form>
+    </a-modal>
+
+    <a-modal v-model:visible="submissionVisible" :title="`${currentAssignment?.title || ''} 提交记录`" width="860px" :footer="false">
+      <a-space direction="vertical" fill>
+        <a-button type="primary" status="success" @click="openSubmissionCreate">新增提交</a-button>
+        <a-table :columns="submissionColumns" :data="submissionList" :pagination="false" row-key="id">
+          <template #status="{ record }">
+            <a-tag :color="submissionStatusColor[record.status]">{{ submissionStatusText[record.status] || record.status }}</a-tag>
+          </template>
+          <template #operations="{ record }">
+            <a-space>
+              <a-button type="text" size="small" @click="openSubmissionEdit(record)">编辑</a-button>
+              <a-button type="text" status="danger" size="small" @click="handleSubmissionDelete(record)">删除</a-button>
+            </a-space>
+          </template>
+        </a-table>
+      </a-space>
+    </a-modal>
+
+    <a-modal
+      v-model:visible="submissionFormVisible"
+      :title="submissionModel.id ? '编辑提交记录' : '新增提交记录'"
+      width="680px"
+      @before-ok="handleSubmissionSave"
+    >
+      <a-form :model="submissionModel" layout="vertical">
+        <a-row :gutter="16">
+          <a-col :span="8">
+            <a-form-item field="userId" label="用户 ID" required>
+              <a-input-number v-model="submissionModel.userId" :min="0" style="width: 100%" />
+            </a-form-item>
+          </a-col>
+          <a-col :span="8">
+            <a-form-item field="fileId" label="附件文件 ID">
+              <a-input-number v-model="submissionModel.fileId" :min="0" style="width: 100%" />
+            </a-form-item>
+          </a-col>
+          <a-col :span="8">
+            <a-form-item field="score" label="分数">
+              <a-input-number v-model="submissionModel.score" :min="0" :max="100" style="width: 100%" />
+            </a-form-item>
+          </a-col>
+        </a-row>
+        <a-form-item field="content" label="提交内容">
+          <a-textarea v-model="submissionModel.content" :auto-size="{ minRows: 3, maxRows: 6 }" placeholder="请输入提交内容" />
+        </a-form-item>
+        <a-form-item field="status" label="状态">
+          <a-select v-model="submissionModel.status">
+            <a-option v-for="item in submissionStatusOptions" :key="item.value" :value="item.value">{{ item.label }}</a-option>
+          </a-select>
+        </a-form-item>
+      </a-form>
+    </a-modal>
+
+    <a-modal v-model:visible="recordVisible" :title="recordModel.id ? '编辑学习记录' : '新增学习记录'" width="640px" @before-ok="handleRecordSave">
+      <a-form :model="recordModel" layout="vertical">
+        <a-row :gutter="16">
+          <a-col :span="12">
+            <a-form-item field="lessonId" label="课时">
+              <a-select v-model="recordModel.lessonId" allow-clear placeholder="请选择课时">
+                <a-option v-for="item in lessonList" :key="item.id" :value="item.id">{{ item.title }}</a-option>
+              </a-select>
+            </a-form-item>
+          </a-col>
+          <a-col :span="12">
+            <a-form-item field="userId" label="用户 ID" required>
+              <a-input-number v-model="recordModel.userId" :min="0" style="width: 100%" />
+            </a-form-item>
+          </a-col>
+          <a-col :span="12">
+            <a-form-item field="progress" label="学习进度">
+              <a-input-number v-model="recordModel.progress" :min="0" :max="100" style="width: 100%" />
+            </a-form-item>
+          </a-col>
+          <a-col :span="12">
+            <a-form-item field="status" label="状态">
+              <a-select v-model="recordModel.status">
+                <a-option v-for="item in recordStatusOptions" :key="item.value" :value="item.value">{{ item.label }}</a-option>
+              </a-select>
+            </a-form-item>
+          </a-col>
+        </a-row>
+      </a-form>
+    </a-modal>
   </div>
 </template>
 
@@ -202,16 +337,28 @@ import { Message, Modal } from '@arco-design/web-vue';
 import { onMounted, reactive, ref } from 'vue';
 import {
   addCourse,
+  addCourseAssignment,
+  addCourseAssignmentSubmission,
   addCourseChapter,
+  addCourseLearningRecord,
   addCourseLesson,
+  getCourseAssignments,
+  getCourseAssignmentSubmissions,
   getCourseChapters,
+  getCourseLearningRecords,
   getCourseLessons,
   getCourses,
+  removeCourseAssignments,
+  removeCourseAssignmentSubmissions,
   removeCourseChapters,
+  removeCourseLearningRecords,
   removeCourseLessons,
   removeCourses,
   updateCourse,
+  updateCourseAssignment,
+  updateCourseAssignmentSubmission,
   updateCourseChapter,
+  updateCourseLearningRecord,
   updateCourseLesson
 } from '@/api/edu/course';
 import { getResourceCategories } from '@/api/edu/resource';
@@ -221,8 +368,21 @@ const statusOptions = [
   { label: '已发布', value: 'published' },
   { label: '已下架', value: 'offline' }
 ];
+const recordStatusOptions = [
+  { label: '学习中', value: 'learning' },
+  { label: '已完成', value: 'finished' }
+];
+const submissionStatusOptions = [
+  { label: '已提交', value: 'submitted' },
+  { label: '已批改', value: 'graded' },
+  { label: '已退回', value: 'returned' }
+];
 const statusText = Object.fromEntries(statusOptions.map((item) => [item.value, item.label]));
 const statusColor = { draft: 'gray', published: 'green', offline: 'gray' };
+const recordStatusText = Object.fromEntries(recordStatusOptions.map((item) => [item.value, item.label]));
+const recordStatusColor = { learning: 'orange', finished: 'green' };
+const submissionStatusText = Object.fromEntries(submissionStatusOptions.map((item) => [item.value, item.label]));
+const submissionStatusColor = { submitted: 'orange', graded: 'green', returned: 'red' };
 const queryForm = reactive({ keyword: '', status: '', pageIndex: 1, pageSize: 10 });
 const tableData = ref([]);
 const pagination = reactive({ current: 1, pageSize: 10, total: 0 });
@@ -232,11 +392,22 @@ const categoryOptions = reactive({});
 const structureVisible = ref(false);
 const chapterVisible = ref(false);
 const lessonVisible = ref(false);
+const assignmentVisible = ref(false);
+const submissionVisible = ref(false);
+const submissionFormVisible = ref(false);
+const recordVisible = ref(false);
 const currentCourse = ref(null);
+const currentAssignment = ref(null);
 const chapterList = ref([]);
 const lessonList = ref([]);
+const assignmentList = ref([]);
+const submissionList = ref([]);
+const recordList = ref([]);
 const chapterModel = reactive(defaultChapterForm());
 const lessonModel = reactive(defaultLessonForm());
+const assignmentModel = reactive(defaultAssignmentForm());
+const submissionModel = reactive(defaultSubmissionForm());
+const recordModel = reactive(defaultRecordForm());
 
 const columns = [
   { title: '课程标题', dataIndex: 'title', ellipsis: true, tooltip: true },
@@ -258,6 +429,26 @@ const lessonColumns = [
   { title: '时长', slotName: 'duration', width: 110 },
   { title: '视频文件 ID', dataIndex: 'videoFileId', width: 120 },
   { title: '排序', dataIndex: 'sort', width: 90 },
+  { title: '状态', slotName: 'status', width: 100 },
+  { title: '操作', slotName: 'operations', width: 150 }
+];
+const assignmentColumns = [
+  { title: '作业标题', dataIndex: 'title', ellipsis: true, tooltip: true },
+  { title: '状态', slotName: 'status', width: 100 },
+  { title: '操作', slotName: 'operations', width: 210 }
+];
+const submissionColumns = [
+  { title: '用户 ID', dataIndex: 'userId', width: 100 },
+  { title: '提交内容', dataIndex: 'content', ellipsis: true, tooltip: true },
+  { title: '附件文件 ID', dataIndex: 'fileId', width: 120 },
+  { title: '分数', dataIndex: 'score', width: 90 },
+  { title: '状态', slotName: 'status', width: 100 },
+  { title: '操作', slotName: 'operations', width: 150 }
+];
+const recordColumns = [
+  { title: '用户 ID', dataIndex: 'userId', width: 100 },
+  { title: '课时', slotName: 'lesson', ellipsis: true, tooltip: true },
+  { title: '进度', slotName: 'progress', width: 100 },
   { title: '状态', slotName: 'status', width: 100 },
   { title: '操作', slotName: 'operations', width: 150 }
 ];
@@ -286,6 +477,18 @@ function defaultChapterForm() {
 
 function defaultLessonForm() {
   return { id: undefined, chapterId: undefined, title: '', videoFileId: 0, durationSeconds: 0, sort: 0, status: 1 };
+}
+
+function defaultAssignmentForm() {
+  return { id: undefined, title: '', content: '', status: 1 };
+}
+
+function defaultSubmissionForm() {
+  return { id: undefined, userId: 0, content: '', fileId: 0, score: 0, status: 'submitted' };
+}
+
+function defaultRecordForm() {
+  return { id: undefined, lessonId: undefined, userId: 0, progress: 0, status: 'learning' };
 }
 
 async function fetchData() {
@@ -373,12 +576,16 @@ async function openStructure(record) {
 
 async function fetchStructure() {
   if (!currentCourse.value?.id) return;
-  const [chaptersRes, lessonsRes] = await Promise.all([
+  const [chaptersRes, lessonsRes, assignmentsRes, recordsRes] = await Promise.all([
     getCourseChapters(currentCourse.value.id),
-    getCourseLessons(currentCourse.value.id)
+    getCourseLessons(currentCourse.value.id),
+    getCourseAssignments(currentCourse.value.id),
+    getCourseLearningRecords(currentCourse.value.id)
   ]);
   chapterList.value = chaptersRes.data || [];
   lessonList.value = lessonsRes.data || [];
+  assignmentList.value = assignmentsRes.data || [];
+  recordList.value = recordsRes.data || [];
 }
 
 function openChapterCreate() {
@@ -463,8 +670,140 @@ function handleLessonDelete(record) {
   });
 }
 
+function openAssignmentCreate() {
+  Object.assign(assignmentModel, defaultAssignmentForm());
+  assignmentVisible.value = true;
+}
+
+function openAssignmentEdit(record) {
+  Object.assign(assignmentModel, defaultAssignmentForm(), record);
+  assignmentVisible.value = true;
+}
+
+async function handleAssignmentSave() {
+  if (!assignmentModel.title) {
+    Message.warning('请输入作业标题');
+    return false;
+  }
+  const payload = { ...assignmentModel };
+  if (payload.id) {
+    await updateCourseAssignment(currentCourse.value.id, payload.id, payload);
+  } else {
+    await addCourseAssignment(currentCourse.value.id, payload);
+  }
+  Message.success('保存成功');
+  assignmentVisible.value = false;
+  fetchStructure();
+}
+
+function handleAssignmentDelete(record) {
+  Modal.confirm({
+    title: '确认删除作业',
+    content: `确定删除「${record.title}」吗？`,
+    async onOk() {
+      await removeCourseAssignments(currentCourse.value.id, { ids: [record.id] });
+      Message.success('删除成功');
+      fetchStructure();
+    }
+  });
+}
+
+async function openSubmissions(record) {
+  currentAssignment.value = record;
+  submissionVisible.value = true;
+  await fetchSubmissions();
+}
+
+async function fetchSubmissions() {
+  if (!currentCourse.value?.id || !currentAssignment.value?.id) return;
+  const res = await getCourseAssignmentSubmissions(currentCourse.value.id, currentAssignment.value.id);
+  submissionList.value = res.data || [];
+}
+
+function openSubmissionCreate() {
+  Object.assign(submissionModel, defaultSubmissionForm());
+  submissionFormVisible.value = true;
+}
+
+function openSubmissionEdit(record) {
+  Object.assign(submissionModel, defaultSubmissionForm(), record);
+  submissionFormVisible.value = true;
+}
+
+async function handleSubmissionSave() {
+  if (!submissionModel.userId) {
+    Message.warning('请输入用户 ID');
+    return false;
+  }
+  const payload = { ...submissionModel };
+  if (payload.id) {
+    await updateCourseAssignmentSubmission(currentCourse.value.id, currentAssignment.value.id, payload.id, payload);
+  } else {
+    await addCourseAssignmentSubmission(currentCourse.value.id, currentAssignment.value.id, payload);
+  }
+  Message.success('保存成功');
+  submissionFormVisible.value = false;
+  fetchSubmissions();
+}
+
+function handleSubmissionDelete(record) {
+  Modal.confirm({
+    title: '确认删除提交记录',
+    content: `确定删除用户 ${record.userId} 的提交记录吗？`,
+    async onOk() {
+      await removeCourseAssignmentSubmissions(currentCourse.value.id, currentAssignment.value.id, { ids: [record.id] });
+      Message.success('删除成功');
+      fetchSubmissions();
+    }
+  });
+}
+
+function openRecordCreate() {
+  Object.assign(recordModel, defaultRecordForm(), {
+    lessonId: lessonList.value[0]?.id
+  });
+  recordVisible.value = true;
+}
+
+function openRecordEdit(record) {
+  Object.assign(recordModel, defaultRecordForm(), record);
+  recordVisible.value = true;
+}
+
+async function handleRecordSave() {
+  if (!recordModel.userId) {
+    Message.warning('请输入用户 ID');
+    return false;
+  }
+  const payload = { ...recordModel };
+  if (payload.id) {
+    await updateCourseLearningRecord(currentCourse.value.id, payload.id, payload);
+  } else {
+    await addCourseLearningRecord(currentCourse.value.id, payload);
+  }
+  Message.success('保存成功');
+  recordVisible.value = false;
+  fetchStructure();
+}
+
+function handleRecordDelete(record) {
+  Modal.confirm({
+    title: '确认删除学习记录',
+    content: `确定删除用户 ${record.userId} 的学习记录吗？`,
+    async onOk() {
+      await removeCourseLearningRecords(currentCourse.value.id, { ids: [record.id] });
+      Message.success('删除成功');
+      fetchStructure();
+    }
+  });
+}
+
 function chapterName(chapterId) {
   return chapterList.value.find((item) => item.id === chapterId)?.title || '未分配章节';
+}
+
+function lessonName(lessonId) {
+  return lessonList.value.find((item) => item.id === lessonId)?.title || '未分配课时';
 }
 
 function formatDuration(seconds = 0) {

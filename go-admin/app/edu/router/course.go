@@ -39,5 +39,17 @@ func registerCourseRouter(v1 *gin.RouterGroup, authMiddleware *jwt.GinJWTMiddlew
 		r.POST("/:id/lessons", api.InsertLesson)
 		r.PUT("/:id/lessons/:lessonId", api.UpdateLesson)
 		r.DELETE("/:id/lessons", api.DeleteLessons)
+		r.GET("/:id/assignments", api.GetAssignments)
+		r.POST("/:id/assignments", api.InsertAssignment)
+		r.PUT("/:id/assignments/:assignmentId", api.UpdateAssignment)
+		r.DELETE("/:id/assignments", api.DeleteAssignments)
+		r.GET("/:id/assignments/:assignmentId/submissions", api.GetAssignmentSubmissions)
+		r.POST("/:id/assignments/:assignmentId/submissions", api.InsertAssignmentSubmission)
+		r.PUT("/:id/assignments/:assignmentId/submissions/:submissionId", api.UpdateAssignmentSubmission)
+		r.DELETE("/:id/assignments/:assignmentId/submissions", api.DeleteAssignmentSubmissions)
+		r.GET("/:id/learning-records", api.GetLearningRecords)
+		r.POST("/:id/learning-records", api.InsertLearningRecord)
+		r.PUT("/:id/learning-records/:recordId", api.UpdateLearningRecord)
+		r.DELETE("/:id/learning-records", api.DeleteLearningRecords)
 	}
 }
