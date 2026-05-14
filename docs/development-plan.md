@@ -434,13 +434,13 @@
 
 - `main`
 - 远程仓库：`https://github.com/ai1304/go-admin-edu.git`
-- 最新业务提交：待提交本轮课程、活动、案例、专家、统计与后台菜单初始化代码。
+- 最新业务提交：以 `git log -1 --oneline` 为准，本快照记录截至后台业务 CRUD 开发。
 
 当前阶段：
 
 - 已完成项目基线整理的一部分：仓库已迁移为 `go-admin-edu`，后端、后台前端、门户前端、共享包已纳入同一个根仓库。
 - 已开始落地 M1-M3：组织/学校、资源中心、门户资源展示的第一批业务骨架已提交。
-- 资源中心尚未形成完整可演示闭环，原因是资源上传/审核 UI、完整 CRUD 表单、数据权限还未完成。
+- 资源中心尚未形成完整可演示闭环，原因是资源分类/标签配置页、门户详情、数据权限和实际联调还未完成。
 
 已完成：
 
@@ -488,7 +488,7 @@
   - `web/apps/admin/src/api/edu/case.js`
   - `web/apps/admin/src/api/edu/expert.js`
   - `web/apps/admin/src/api/edu/stats.js`
-- 后台前端新增页面骨架：
+- 后台前端新增页面：
   - `web/apps/admin/src/views/edu/region/index.vue`
   - `web/apps/admin/src/views/edu/school/index.vue`
   - `web/apps/admin/src/views/edu/resource/index.vue`
@@ -497,6 +497,10 @@
   - `web/apps/admin/src/views/edu/case/index.vue`
   - `web/apps/admin/src/views/edu/expert/index.vue`
   - `web/apps/admin/src/views/edu/stats/index.vue`
+- 后台区域、学校、资源、课程、教研活动、特教案例、专家页面已具备基础新增、编辑、删除能力。
+- 后台资源管理已接入资源审核动作：提交审核、审核通过、审核驳回。
+- 后台资源管理已接入附件管理入口，可调用 `POST /api/v1/edu/resource-files/upload` 上传资源附件，并可删除附件记录。
+- 后台请求封装已兼容 `FormData`，避免文件上传请求被强制设置为 JSON。
 - 后台菜单已规划为数据库驱动，管理员角色会自动看到 `sys_menu` 中 `M/C` 类型菜单；普通角色需要在角色菜单权限中勾选对应教育业务菜单。
 - 门户前端新增资源 API：`web/apps/portal/src/api/resources.js`。
 - 门户前端新增课程、活动、专家 API：`web/apps/portal/src/api/courses.js`、`activities.js`、`experts.js`。
@@ -504,12 +508,13 @@
 
 已验证：
 
-- 后端曾执行 `go build ./...` 通过；本轮菜单迁移补充后需再次验证。
+- 后端执行 `go build ./...` 通过。
+- 后台前端执行 `npm.cmd --prefix web/apps/admin run build` 通过，存在 Sass `@import` 废弃警告和 chunk 体积警告，暂不影响构建。
 - 当前本地仓库状态曾在提交后保持 `main...origin/main`。
 
 未验证：
 
-- 前端依赖尚未安装，未执行 `pnpm dev:admin`、`pnpm dev:portal`、`pnpm build`。
+- 门户前端本轮未重新执行构建。
 - 尚未实际连接 MySQL 执行迁移。
 - 当前机器 Docker CLI 不可用，尚未执行 `docker compose config` 或启动完整 Docker 环境。
 
@@ -520,12 +525,11 @@
 1. 在有 Docker 的机器上执行 `docker compose config` 并启动 MySQL、Redis、MinIO。
 2. 安装前端依赖并验证 `web/apps/admin`、`web/apps/portal` 能启动。
 3. 执行后端迁移，确认教育业务表能成功创建。
-4. 后台资源页面接入 `POST /api/v1/edu/resource-files/upload`。
-5. 将当前后台列表骨架升级为完整 CRUD 表单：区域、学校、资源、课程、活动、案例、专家。
-6. 补充教育业务按钮级权限和普通角色授权策略。
-7. 完成资源上传/编辑/提交审核/审核页面。
-8. 完成门户详情页：课程详情、活动详情、专家详情、资源预览、下载入口。
-9. 扩展用户与数据权限：`tenant_id`、`region_id`、`school_id`、用户类型。
+4. 补充资源分类/标签管理页，并将分类选择接入资源、课程表单。
+5. 补充教育业务按钮级权限和普通角色授权策略。
+6. 完成门户详情页：课程详情、活动详情、专家详情、资源预览、下载入口。
+7. 扩展用户与数据权限：`tenant_id`、`region_id`、`school_id`、用户类型。
+8. 联调 MinIO 上传、资源创建、提交审核、审核发布、门户展示全链路。
 
 ## 9. 当前前端目录结构
 

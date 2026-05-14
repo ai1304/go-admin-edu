@@ -8,59 +8,169 @@
         </a-form-item>
         <a-form-item label="状态">
           <a-select v-model="queryForm.status" allow-clear placeholder="请选择状态" style="width: 160px">
-            <a-option value="draft">草稿</a-option>
-            <a-option value="reviewing">审核中</a-option>
-            <a-option value="published">已发布</a-option>
-            <a-option value="rejected">已驳回</a-option>
-            <a-option value="offline">已下架</a-option>
+            <a-option v-for="item in statusOptions" :key="item.value" :value="item.value">{{ item.label }}</a-option>
           </a-select>
         </a-form-item>
         <a-form-item>
           <a-space>
             <a-button type="primary" @click="fetchData">查询</a-button>
             <a-button @click="resetQuery">重置</a-button>
+            <a-button type="primary" status="success" @click="openCreate">新增资源</a-button>
           </a-space>
         </a-form-item>
       </a-form>
     </a-card>
+
     <a-card :bordered="false" class="cardStyle table-card">
       <a-table :columns="columns" :data="tableData" :pagination="pagination" row-key="id" @page-change="handlePageChange">
         <template #status="{ record }">
-          <a-tag>{{ statusText[record.status] || record.status }}</a-tag>
+          <a-tag :color="statusColor[record.status]">{{ statusText[record.status] || record.status }}</a-tag>
+        </template>
+        <template #operations="{ record }">
+          <a-space>
+            <a-button type="text" size="small" @click="openEdit(record)">编辑</a-button>
+            <a-button type="text" size="small" @click="openFiles(record)">附件</a-button>
+            <a-button v-if="record.status === 'draft' || record.status === 'rejected'" type="text" size="small" @click="handleSubmitReview(record)">提交审核</a-button>
+            <a-button v-if="record.status === 'reviewing'" type="text" size="small" @click="handleReview(record, 'approve')">通过</a-button>
+            <a-button v-if="record.status === 'reviewing'" type="text" status="warning" size="small" @click="handleReview(record, 'reject')">驳回</a-button>
+            <a-button type="text" status="danger" size="small" @click="handleDelete(record)">删除</a-button>
+          </a-space>
         </template>
       </a-table>
     </a-card>
+
+    <a-modal v-model:visible="formVisible" :title="formModel.id ? '编辑资源' : '新增资源'" width="760px" @before-ok="handleSave">
+      <a-form :model="formModel" layout="vertical">
+        <a-row :gutter="16">
+          <a-col :span="12">
+            <a-form-item field="title" label="资源标题" required>
+              <a-input v-model="formModel.title" placeholder="请输入资源标题" />
+            </a-form-item>
+          </a-col>
+          <a-col :span="12">
+            <a-form-item field="authorName" label="作者">
+              <a-input v-model="formModel.authorName" placeholder="请输入作者/教师" />
+            </a-form-item>
+          </a-col>
+          <a-col :span="12">
+            <a-form-item field="status" label="状态">
+              <a-select v-model="formModel.status">
+                <a-option v-for="item in statusOptions" :key="item.value" :value="item.value">{{ item.label }}</a-option>
+              </a-select>
+            </a-form-item>
+          </a-col>
+          <a-col :span="12">
+            <a-form-item field="schoolId" label="学校 ID">
+              <a-input-number v-model="formModel.schoolId" :min="0" placeholder="请输入学校 ID" style="width: 100%" />
+            </a-form-item>
+          </a-col>
+          <a-col :span="24">
+            <a-form-item field="keywords" label="关键词">
+              <a-input v-model="formModel.keywords" placeholder="多个关键词用逗号分隔" />
+            </a-form-item>
+          </a-col>
+          <a-col :span="24">
+            <a-form-item field="summary" label="资源简介">
+              <a-textarea v-model="formModel.summary" :auto-size="{ minRows: 3, maxRows: 6 }" placeholder="请输入资源简介" />
+            </a-form-item>
+          </a-col>
+        </a-row>
+      </a-form>
+    </a-modal>
+
+    <a-modal v-model:visible="fileVisible" :title="`${currentResource?.title || ''} 附件`" width="760px" :footer="false">
+      <a-space direction="vertical" fill>
+        <a-space>
+          <a-button type="primary" @click="triggerUpload">上传附件</a-button>
+          <input ref="fileInput" type="file" class="hidden-file-input" @change="handleFileChange" />
+        </a-space>
+        <a-table :columns="fileColumns" :data="fileList" :pagination="false" row-key="id">
+          <template #size="{ record }">{{ formatSize(record.size) }}</template>
+          <template #fileOperations="{ record }">
+            <a-button type="text" status="danger" size="small" @click="handleDeleteFile(record)">删除</a-button>
+          </template>
+        </a-table>
+      </a-space>
+    </a-modal>
   </div>
 </template>
 
 <script setup>
+import { Message, Modal } from '@arco-design/web-vue';
 import { onMounted, reactive, ref } from 'vue';
-import { getResources } from '@/api/edu/resource';
+import {
+  addResource,
+  getResourceFiles,
+  getResources,
+  removeResourceFiles,
+  removeResources,
+  reviewResource,
+  submitResourceReview,
+  updateResource,
+  uploadResourceFile
+} from '@/api/edu/resource';
+
+const statusOptions = [
+  { label: '草稿', value: 'draft' },
+  { label: '审核中', value: 'reviewing' },
+  { label: '已发布', value: 'published' },
+  { label: '已驳回', value: 'rejected' },
+  { label: '已下架', value: 'offline' }
+];
+const statusText = Object.fromEntries(statusOptions.map((item) => [item.value, item.label]));
+const statusColor = { draft: 'gray', reviewing: 'orange', published: 'green', rejected: 'red', offline: 'gray' };
 
 const queryForm = reactive({ keyword: '', status: '', pageIndex: 1, pageSize: 10 });
 const tableData = ref([]);
 const pagination = reactive({ current: 1, pageSize: 10, total: 0 });
-const statusText = {
-  draft: '草稿',
-  reviewing: '审核中',
-  published: '已发布',
-  rejected: '已驳回',
-  offline: '已下架'
-};
+const formVisible = ref(false);
+const fileVisible = ref(false);
+const fileInput = ref(null);
+const fileList = ref([]);
+const currentResource = ref(null);
+const formModel = reactive(defaultForm());
 
 const columns = [
-  { title: '资源标题', dataIndex: 'title' },
-  { title: '作者', dataIndex: 'authorName' },
-  { title: '学校', dataIndex: 'schoolId' },
-  { title: '状态', slotName: 'status' },
-  { title: '浏览', dataIndex: 'viewCount' },
-  { title: '下载', dataIndex: 'downloadCount' }
+  { title: '资源标题', dataIndex: 'title', ellipsis: true, tooltip: true },
+  { title: '作者', dataIndex: 'authorName', width: 120 },
+  { title: '学校 ID', dataIndex: 'schoolId', width: 100 },
+  { title: '状态', slotName: 'status', width: 110 },
+  { title: '浏览', dataIndex: 'viewCount', width: 90 },
+  { title: '下载', dataIndex: 'downloadCount', width: 90 },
+  { title: '操作', slotName: 'operations', width: 310 }
 ];
+const fileColumns = [
+  { title: '文件名', dataIndex: 'originalName', ellipsis: true, tooltip: true },
+  { title: '类型', dataIndex: 'contentType', width: 180 },
+  { title: '大小', slotName: 'size', width: 120 },
+  { title: '操作', slotName: 'fileOperations', width: 100 }
+];
+
+function defaultForm() {
+  return {
+    id: undefined,
+    title: '',
+    summary: '',
+    authorName: '',
+    keywords: '',
+    status: 'draft',
+    schoolId: 0
+  };
+}
+
+function assignForm(data = {}) {
+  Object.assign(formModel, defaultForm(), data);
+}
+
+function getPagePayload(res) {
+  return res.data || {};
+}
 
 async function fetchData() {
   const res = await getResources(queryForm);
-  tableData.value = res.data?.list || res.data || [];
-  pagination.total = res.data?.count || res.total || 0;
+  const payload = getPagePayload(res);
+  tableData.value = payload.list || payload || [];
+  pagination.total = payload.count || res.total || 0;
 }
 
 function handlePageChange(page) {
@@ -77,6 +187,104 @@ function resetQuery() {
   fetchData();
 }
 
+function openCreate() {
+  assignForm();
+  formVisible.value = true;
+}
+
+function openEdit(record) {
+  assignForm(record);
+  formVisible.value = true;
+}
+
+async function handleSave() {
+  if (!formModel.title) {
+    Message.warning('请输入资源标题');
+    return false;
+  }
+  const payload = { ...formModel };
+  if (payload.id) {
+    await updateResource(payload.id, payload);
+  } else {
+    await addResource(payload);
+  }
+  Message.success('保存成功');
+  formVisible.value = false;
+  fetchData();
+}
+
+function handleDelete(record) {
+  Modal.confirm({
+    title: '确认删除资源',
+    content: `确定删除「${record.title}」吗？`,
+    async onOk() {
+      await removeResources({ ids: [record.id] });
+      Message.success('删除成功');
+      fetchData();
+    }
+  });
+}
+
+async function handleSubmitReview(record) {
+  await submitResourceReview(record.id);
+  Message.success('已提交审核');
+  fetchData();
+}
+
+async function handleReview(record, action) {
+  await reviewResource(record.id, { action, comment: action === 'approve' ? '审核通过' : '审核驳回' });
+  Message.success(action === 'approve' ? '已发布' : '已驳回');
+  fetchData();
+}
+
+async function openFiles(record) {
+  currentResource.value = record;
+  fileVisible.value = true;
+  await fetchFiles();
+}
+
+async function fetchFiles() {
+  if (!currentResource.value?.id) return;
+  const res = await getResourceFiles({ resourceId: currentResource.value.id, pageIndex: 1, pageSize: 100 });
+  const payload = getPagePayload(res);
+  fileList.value = payload.list || payload || [];
+}
+
+function triggerUpload() {
+  fileInput.value?.click();
+}
+
+async function handleFileChange(event) {
+  const file = event.target.files?.[0];
+  if (!file || !currentResource.value?.id) return;
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('resourceId', currentResource.value.id);
+  formData.append('usage', 'attachment');
+  await uploadResourceFile(formData);
+  event.target.value = '';
+  Message.success('上传成功');
+  fetchFiles();
+}
+
+function handleDeleteFile(record) {
+  Modal.confirm({
+    title: '确认删除附件',
+    content: `确定删除「${record.originalName}」吗？`,
+    async onOk() {
+      await removeResourceFiles({ ids: [record.id] });
+      Message.success('删除成功');
+      fetchFiles();
+    }
+  });
+}
+
+function formatSize(size = 0) {
+  if (size < 1024) return `${size} B`;
+  if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`;
+  return `${(size / 1024 / 1024).toFixed(1)} MB`;
+}
+
 onMounted(fetchData);
 </script>
 
@@ -84,5 +292,8 @@ onMounted(fetchData);
 .table-card {
   margin-top: 16px;
 }
-</style>
 
+.hidden-file-input {
+  display: none;
+}
+</style>

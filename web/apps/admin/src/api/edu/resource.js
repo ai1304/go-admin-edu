@@ -73,7 +73,10 @@ export function addResourceFile(data) {
   return request({ url: fileUrl, method: 'post', data });
 }
 
+export function uploadResourceFile(data) {
+  return request({ url: `${fileUrl}/upload`, method: 'post', data });
+}
+
 export function removeResourceFiles(data) {
   return request({ url: fileUrl, method: 'delete', data });
 }
-

@@ -16,7 +16,9 @@ service.interceptors.request.use(
     // 设置请求头部 Authorization
     if (store.token) {
       config.headers['Authorization'] = 'Bearer ' + store.token;
-      config.headers['Content-Type'] = 'application/json'
+      if (!(config.data instanceof FormData) && !config.headers['Content-Type']) {
+        config.headers['Content-Type'] = 'application/json'
+      }
     }
     return config;
   },
@@ -33,7 +35,7 @@ service.interceptors.response.use(
   },
   (error) => {
     const store = useUserStore();
-    const { code, msg } = error.response.data;
+    const { code, msg } = error.response?.data || {};
     // 如果过期则退出登录
     if (code === 401) {
       Message.error({
