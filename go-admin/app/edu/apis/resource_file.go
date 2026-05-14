@@ -15,6 +15,7 @@ import (
 	"github.com/go-admin-team/go-admin-core/sdk/api"
 	"github.com/go-admin-team/go-admin-core/sdk/pkg/jwtauth/user"
 	"github.com/google/uuid"
+	"gorm.io/gorm"
 )
 
 type EduResourceFile struct {
@@ -124,6 +125,46 @@ func (e EduResourceFile) Upload(c *gin.Context) {
 		return
 	}
 	e.OK(record, "上传成功")
+}
+
+func (e EduResourceFile) PublicAccessURL(c *gin.Context) {
+	if err := e.MakeContext(c).MakeOrm().Errors; err != nil {
+		e.Error(500, err, err.Error())
+		return
+	}
+
+	resourceId := parsePathId(c.Param("id"))
+	fileId := parsePathId(c.Param("fileId"))
+	var resource models.EduResource
+	if err := e.Orm.Where("id = ? and status = ?", resourceId, models.ResourceStatusPublished).First(&resource).Error; err != nil {
+		e.Error(404, err, "资源不存在")
+		return
+	}
+
+	var file models.EduResourceFile
+	if err := e.Orm.Where("id = ? and resource_id = ?", fileId, resourceId).First(&file).Error; err != nil {
+		e.Error(404, err, "文件不存在")
+		return
+	}
+
+	storage, err := objectstorage.NewFromExtend()
+	if err != nil {
+		e.Error(500, err, "对象存储未配置")
+		return
+	}
+	expires := 15 * time.Minute
+	url, err := storage.PresignedGetObject(c.Request.Context(), file.ObjectKey, expires)
+	if err != nil {
+		e.Error(500, err, "获取文件访问地址失败")
+		return
+	}
+
+	_ = e.Orm.Model(&models.EduResource{}).Where("id = ?", resource.Id).UpdateColumn("download_count", gorm.Expr("download_count + ?", 1)).Error
+	e.OK(gin.H{
+		"url":       url,
+		"expiresIn": int(expires.Seconds()),
+		"file":      file,
+	}, "获取成功")
 }
 
 func (e EduResourceFile) Delete(c *gin.Context) {

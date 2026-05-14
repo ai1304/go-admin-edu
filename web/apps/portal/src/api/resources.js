@@ -15,3 +15,9 @@ export function getPublishedResource(id) {
   });
 }
 
+export function getResourceFileAccessUrl(resourceId, fileId) {
+  return request({
+    url: `/portal/resources/${resourceId}/files/${fileId}/access-url`,
+    method: "get"
+  });
+}

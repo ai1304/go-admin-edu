@@ -27,8 +27,11 @@
             <h2>附件</h2>
             <div v-if="files.length" class="file-list">
               <div v-for="file in files" :key="file.id" class="file-item">
-                <strong>{{ file.originalName }}</strong>
-                <span>{{ file.contentType || file.ext || "未知类型" }} · {{ formatSize(file.size) }}</span>
+                <div>
+                  <strong>{{ file.originalName }}</strong>
+                  <span>{{ file.contentType || file.ext || "未知类型" }} · {{ formatSize(file.size) }}</span>
+                </div>
+                <a-button type="primary" size="small" @click="openFile(file)">下载/预览</a-button>
               </div>
             </div>
             <a-empty v-else description="暂无附件" />
@@ -41,10 +44,11 @@
 </template>
 
 <script setup>
+import { Message } from "@arco-design/web-vue";
 import { onMounted, ref } from "vue";
 import { useRoute } from "vue-router";
 import PortalLayout from "@/layouts/PortalLayout.vue";
-import { getPublishedResource } from "@/api/resources";
+import { getPublishedResource, getResourceFileAccessUrl } from "@/api/resources";
 
 const route = useRoute();
 const loading = ref(false);
@@ -66,6 +70,20 @@ function formatSize(size = 0) {
   if (size < 1024) return `${size} B`;
   if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`;
   return `${(size / 1024 / 1024).toFixed(1)} MB`;
+}
+
+async function openFile(file) {
+  try {
+    const res = await getResourceFileAccessUrl(route.params.id, file.id);
+    const url = res.data?.url || res.url;
+    if (!url) {
+      Message.warning("暂未获取到文件访问地址");
+      return;
+    }
+    window.open(url, "_blank", "noopener,noreferrer");
+  } catch (error) {
+    Message.error("获取文件访问地址失败");
+  }
 }
 
 onMounted(fetchResource);

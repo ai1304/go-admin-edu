@@ -238,11 +238,25 @@ a {
 }
 
 .file-item {
-  display: grid;
-  gap: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
   padding: 12px;
   background: #f7f8fa;
   border-radius: 6px;
+}
+
+.file-item div {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+}
+
+.file-item strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .file-item span {
