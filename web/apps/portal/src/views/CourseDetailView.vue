@@ -22,6 +22,19 @@
           <article class="detail-panel">
             <h2>教学目标</h2>
             <p>{{ course.objectives || "暂未填写教学目标。" }}</p>
+            <div class="outline-list">
+              <h2>课程大纲</h2>
+              <div v-if="chapters.length" class="outline-chapters">
+                <section v-for="chapter in chapters" :key="chapter.id" class="outline-chapter">
+                  <strong>{{ chapter.title }}</strong>
+                  <div v-if="chapterLessons(chapter.id).length" class="outline-lessons">
+                    <span v-for="lesson in chapterLessons(chapter.id)" :key="lesson.id">{{ lesson.title }} · {{ formatDuration(lesson.durationSeconds) }}</span>
+                  </div>
+                  <small v-else>暂无课时</small>
+                </section>
+              </div>
+              <a-empty v-else description="暂无课程大纲" />
+            </div>
           </article>
           <aside class="side-panel">
             <h2>课程信息</h2>
@@ -56,6 +69,8 @@ import { getPublishedCourse } from "@/api/courses";
 const route = useRoute();
 const loading = ref(false);
 const course = ref(null);
+const chapters = ref([]);
+const lessons = ref([]);
 const difficultyText = {
   basic: "基础",
   advanced: "进阶",
@@ -67,9 +82,22 @@ async function fetchCourse() {
   try {
     const res = await getPublishedCourse(route.params.id);
     course.value = res.data?.course || res.data || null;
+    chapters.value = res.data?.chapters || [];
+    lessons.value = res.data?.lessons || [];
   } finally {
     loading.value = false;
   }
+}
+
+function chapterLessons(chapterId) {
+  return lessons.value.filter((item) => item.chapterId === chapterId);
+}
+
+function formatDuration(seconds = 0) {
+  if (!seconds) return "未设置时长";
+  const minutes = Math.floor(seconds / 60);
+  const rest = seconds % 60;
+  return `${minutes}分${rest}秒`;
 }
 
 onMounted(fetchCourse);

@@ -264,6 +264,35 @@ a {
   font-size: 13px;
 }
 
+.outline-list {
+  display: grid;
+  gap: 14px;
+  margin-top: 24px;
+}
+
+.outline-chapters {
+  display: grid;
+  gap: 12px;
+}
+
+.outline-chapter {
+  display: grid;
+  gap: 8px;
+  padding: 14px;
+  background: #f7f8fa;
+  border-radius: 6px;
+}
+
+.outline-lessons {
+  display: grid;
+  gap: 6px;
+  color: #4e5969;
+}
+
+.outline-chapter small {
+  color: #86909c;
+}
+
 .login-shell {
   display: grid;
   place-items: center;
