@@ -154,6 +154,102 @@ a {
   color: #86909c;
 }
 
+.detail-hero {
+  display: grid;
+  gap: 16px;
+  margin-bottom: 24px;
+  padding: 24px;
+  background: #fff;
+  border: 1px solid #e5e6eb;
+  border-radius: 8px;
+}
+
+.detail-hero h1 {
+  margin: 0;
+  font-size: 34px;
+  line-height: 1.2;
+}
+
+.detail-hero p {
+  max-width: 780px;
+  margin: 0;
+  color: #4e5969;
+  font-size: 16px;
+  line-height: 1.8;
+}
+
+.meta-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.detail-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  gap: 16px;
+}
+
+.detail-panel,
+.side-panel {
+  padding: 22px;
+  background: #fff;
+  border: 1px solid #e5e6eb;
+  border-radius: 8px;
+}
+
+.detail-panel h2,
+.side-panel h2 {
+  margin: 0 0 14px;
+  font-size: 20px;
+}
+
+.detail-panel p,
+.side-panel p {
+  margin: 0;
+  color: #4e5969;
+  line-height: 1.8;
+}
+
+.info-list {
+  display: grid;
+  gap: 14px;
+  margin: 0;
+}
+
+.info-list div {
+  display: grid;
+  gap: 4px;
+}
+
+.info-list dt {
+  color: #86909c;
+  font-size: 13px;
+}
+
+.info-list dd {
+  margin: 0;
+  color: #1d2129;
+}
+
+.file-list {
+  display: grid;
+  gap: 10px;
+}
+
+.file-item {
+  display: grid;
+  gap: 4px;
+  padding: 12px;
+  background: #f7f8fa;
+  border-radius: 6px;
+}
+
+.file-item span {
+  color: #86909c;
+  font-size: 13px;
+}
+
 .login-shell {
   display: grid;
   place-items: center;
@@ -176,7 +272,8 @@ a {
 
   .hero,
   .quick-grid,
-  .content-grid {
+  .content-grid,
+  .detail-layout {
     grid-template-columns: 1fr;
   }
 }

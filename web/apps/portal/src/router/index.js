@@ -22,14 +22,29 @@ const routes = [
     component: () => import("@/views/CourseListView.vue")
   },
   {
+    path: "/courses/:id",
+    name: "course-detail",
+    component: () => import("@/views/CourseDetailView.vue")
+  },
+  {
     path: "/activities",
     name: "activities",
     component: () => import("@/views/ActivityListView.vue")
   },
   {
+    path: "/activities/:id",
+    name: "activity-detail",
+    component: () => import("@/views/ActivityDetailView.vue")
+  },
+  {
     path: "/experts",
     name: "experts",
     component: () => import("@/views/ExpertListView.vue")
+  },
+  {
+    path: "/experts/:id",
+    name: "expert-detail",
+    component: () => import("@/views/ExpertDetailView.vue")
   },
   {
     path: "/login",

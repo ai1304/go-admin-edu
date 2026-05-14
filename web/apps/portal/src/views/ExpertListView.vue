@@ -6,11 +6,11 @@
     </section>
     <a-spin :loading="loading" style="width: 100%">
       <div v-if="experts.length" class="content-grid">
-        <article v-for="item in experts" :key="item.id" class="content-card">
+        <router-link v-for="item in experts" :key="item.id" :to="`/experts/${item.id}`" class="content-card">
           <strong>{{ item.name }}</strong>
           <span>{{ item.specialties || item.introduction || "暂无简介" }}</span>
           <small>{{ item.title || "专家" }} · {{ item.organization || "平台专家库" }}</small>
-        </article>
+        </router-link>
       </div>
       <a-empty v-else description="暂无专家资源" />
     </a-spin>

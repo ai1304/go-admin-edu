@@ -6,11 +6,11 @@
     </section>
     <a-spin :loading="loading" style="width: 100%">
       <div v-if="activities.length" class="content-grid">
-        <article v-for="item in activities" :key="item.id" class="content-card">
+        <router-link v-for="item in activities" :key="item.id" :to="`/activities/${item.id}`" class="content-card">
           <strong>{{ item.title }}</strong>
           <span>{{ item.summary || "暂无简介" }}</span>
           <small>{{ item.startTime || "时间待定" }} · {{ item.location || "地点待定" }}</small>
-        </article>
+        </router-link>
       </div>
       <a-empty v-else description="暂无活动" />
     </a-spin>

@@ -509,16 +509,19 @@
 - 门户前端新增资源 API：`web/apps/portal/src/api/resources.js`。
 - 门户前端新增课程、活动、专家 API：`web/apps/portal/src/api/courses.js`、`activities.js`、`experts.js`。
 - 门户资源、课程、活动、专家列表已接入公开接口，资源详情已接入公开资源详情接口。
+- 门户新增课程详情、活动详情、专家详情页面，并已接入列表跳转。
+- 门户资源详情已补充附件展示，可显示资源文件名、类型和大小。
 
 已验证：
 
 - 后端执行 `go build ./...` 通过。
 - 后台前端执行 `npm.cmd --prefix web/apps/admin run build` 通过，存在 Sass `@import` 废弃警告和 chunk 体积警告，暂不影响构建。
+- 门户前端执行 `npm.cmd --prefix web/apps/portal run build` 通过，存在 chunk 体积警告，暂不影响构建。
 - 当前本地仓库状态曾在提交后保持 `main...origin/main`。
 
 未验证：
 
-- 门户前端本轮未重新执行构建。
+- 尚未进行浏览器端真实联调和接口数据联调。
 - 尚未实际连接 MySQL 执行迁移。
 - 当前机器 Docker CLI 不可用，尚未执行 `docker compose config` 或启动完整 Docker 环境。
 
@@ -530,7 +533,7 @@
 2. 安装前端依赖并验证 `web/apps/admin`、`web/apps/portal` 能启动。
 3. 执行后端迁移，确认教育业务表能成功创建。
 4. 补充教育业务按钮级权限和普通角色授权策略。
-5. 完成门户详情页：课程详情、活动详情、专家详情、资源预览、下载入口。
+5. 补充资源下载/预览接口与门户下载入口。
 6. 扩展用户与数据权限：`tenant_id`、`region_id`、`school_id`、用户类型。
 7. 联调 MinIO 上传、资源创建、提交审核、审核发布、门户展示全链路。
 8. 将资源标签从关键词文本升级为可多选标签并建立资源-标签关联表。

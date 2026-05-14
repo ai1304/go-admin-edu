@@ -6,11 +6,11 @@
     </section>
     <a-spin :loading="loading" style="width: 100%">
       <div v-if="courses.length" class="content-grid">
-        <article v-for="item in courses" :key="item.id" class="content-card">
+        <router-link v-for="item in courses" :key="item.id" :to="`/courses/${item.id}`" class="content-card">
           <strong>{{ item.title }}</strong>
           <span>{{ item.summary || "暂无简介" }}</span>
           <small>{{ item.teacherName || "平台课程" }}</small>
-        </article>
+        </router-link>
       </div>
       <a-empty v-else description="暂无课程" />
     </a-spin>
