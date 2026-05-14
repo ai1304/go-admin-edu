@@ -123,6 +123,37 @@ a {
   margin-bottom: 24px;
 }
 
+.content-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.content-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 148px;
+  padding: 18px;
+  background: #fff;
+  border: 1px solid #e5e6eb;
+  border-radius: 8px;
+}
+
+.content-card strong {
+  font-size: 17px;
+}
+
+.content-card span {
+  color: #4e5969;
+  line-height: 1.7;
+}
+
+.content-card small {
+  margin-top: auto;
+  color: #86909c;
+}
+
 .login-shell {
   display: grid;
   place-items: center;
@@ -144,7 +175,8 @@ a {
   }
 
   .hero,
-  .quick-grid {
+  .quick-grid,
+  .content-grid {
     grid-template-columns: 1fr;
   }
 }
