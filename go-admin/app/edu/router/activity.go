@@ -19,6 +19,7 @@ func registerPublicActivityRouter(v1 *gin.RouterGroup) {
 	{
 		r.GET("", api.PublicGetPage)
 		r.GET("/:id", api.PublicGet)
+		r.POST("/:id/signup", api.PublicSignup)
 	}
 }
 
@@ -32,5 +33,16 @@ func registerActivityRouter(v1 *gin.RouterGroup, authMiddleware *jwt.GinJWTMiddl
 		r.PUT("/:id", api.Update)
 		r.DELETE("", api.Delete)
 		r.POST("/:id/signup", api.Signup)
+		r.GET("/:id/signups", api.GetSignups)
+		r.POST("/:id/signups", api.InsertSignup)
+		r.PUT("/:id/signups/:signupId", api.UpdateSignup)
+		r.DELETE("/:id/signups", api.DeleteSignups)
+		r.GET("/:id/checkins", api.GetCheckins)
+		r.POST("/:id/checkins", api.InsertCheckin)
+		r.DELETE("/:id/checkins", api.DeleteCheckins)
+		r.GET("/:id/outcomes", api.GetOutcomes)
+		r.POST("/:id/outcomes", api.InsertOutcome)
+		r.PUT("/:id/outcomes/:outcomeId", api.UpdateOutcome)
+		r.DELETE("/:id/outcomes", api.DeleteOutcomes)
 	}
 }

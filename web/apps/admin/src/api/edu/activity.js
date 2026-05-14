@@ -22,3 +22,46 @@ export function removeActivities(data) {
   return request({ url, method: 'delete', data });
 }
 
+export function getActivitySignups(activityId) {
+  return request({ url: `${url}/${activityId}/signups`, method: 'get' });
+}
+
+export function addActivitySignup(activityId, data) {
+  return request({ url: `${url}/${activityId}/signups`, method: 'post', data });
+}
+
+export function updateActivitySignup(activityId, signupId, data) {
+  return request({ url: `${url}/${activityId}/signups/${signupId}`, method: 'put', data });
+}
+
+export function removeActivitySignups(activityId, data) {
+  return request({ url: `${url}/${activityId}/signups`, method: 'delete', data });
+}
+
+export function getActivityCheckins(activityId) {
+  return request({ url: `${url}/${activityId}/checkins`, method: 'get' });
+}
+
+export function addActivityCheckin(activityId, data) {
+  return request({ url: `${url}/${activityId}/checkins`, method: 'post', data });
+}
+
+export function removeActivityCheckins(activityId, data) {
+  return request({ url: `${url}/${activityId}/checkins`, method: 'delete', data });
+}
+
+export function getActivityOutcomes(activityId) {
+  return request({ url: `${url}/${activityId}/outcomes`, method: 'get' });
+}
+
+export function addActivityOutcome(activityId, data) {
+  return request({ url: `${url}/${activityId}/outcomes`, method: 'post', data });
+}
+
+export function updateActivityOutcome(activityId, outcomeId, data) {
+  return request({ url: `${url}/${activityId}/outcomes/${outcomeId}`, method: 'put', data });
+}
+
+export function removeActivityOutcomes(activityId, data) {
+  return request({ url: `${url}/${activityId}/outcomes`, method: 'delete', data });
+}

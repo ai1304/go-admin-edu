@@ -22,6 +22,16 @@
           <article class="detail-panel">
             <h2>活动介绍</h2>
             <p>{{ activity.summary || "暂未填写活动介绍。" }}</p>
+            <div class="outline-list">
+              <h2>活动成果</h2>
+              <div v-if="outcomes.length" class="outline-chapters">
+                <section v-for="item in outcomes" :key="item.id" class="outline-chapter">
+                  <strong>{{ item.title }}</strong>
+                  <span>{{ item.content || "暂无成果说明" }}</span>
+                </section>
+              </div>
+              <a-empty v-else description="暂无活动成果" />
+            </div>
           </article>
           <aside class="side-panel">
             <h2>活动信息</h2>
@@ -39,32 +49,61 @@
                 <dd>{{ activity.signupCount || 0 }}</dd>
               </div>
             </dl>
+            <a-button type="primary" long class="side-action" @click="signupVisible = true">我要报名</a-button>
           </aside>
         </section>
       </template>
       <a-empty v-else description="暂无活动详情" />
     </a-spin>
+    <a-modal v-model:visible="signupVisible" title="活动报名" width="460px" @before-ok="handleSignup">
+      <a-form :model="signupForm" layout="vertical">
+        <a-form-item field="name" label="姓名" required>
+          <a-input v-model="signupForm.name" placeholder="请输入姓名" />
+        </a-form-item>
+        <a-form-item field="phone" label="电话">
+          <a-input v-model="signupForm.phone" placeholder="请输入联系电话" />
+        </a-form-item>
+      </a-form>
+    </a-modal>
   </PortalLayout>
 </template>
 
 <script setup>
-import { onMounted, ref } from "vue";
+import { Message } from "@arco-design/web-vue";
+import { onMounted, reactive, ref } from "vue";
 import { useRoute } from "vue-router";
 import PortalLayout from "@/layouts/PortalLayout.vue";
-import { getPublishedActivity } from "@/api/activities";
+import { getPublishedActivity, signupActivity } from "@/api/activities";
 
 const route = useRoute();
 const loading = ref(false);
 const activity = ref(null);
+const outcomes = ref([]);
+const signupVisible = ref(false);
+const signupForm = reactive({ name: "", phone: "" });
 
 async function fetchActivity() {
   loading.value = true;
   try {
     const res = await getPublishedActivity(route.params.id);
     activity.value = res.data?.activity || res.data || null;
+    outcomes.value = res.data?.outcomes || [];
   } finally {
     loading.value = false;
   }
+}
+
+async function handleSignup() {
+  if (!signupForm.name) {
+    Message.warning("请输入姓名");
+    return false;
+  }
+  await signupActivity(route.params.id, { ...signupForm });
+  Message.success("报名成功");
+  signupVisible.value = false;
+  signupForm.name = "";
+  signupForm.phone = "";
+  fetchActivity();
 }
 
 onMounted(fetchActivity);
