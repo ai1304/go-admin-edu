@@ -413,7 +413,27 @@ const accessActionText = {
   view_detail: '查看详情',
   view_ieps: '查看 IEP',
   view_assessments: '查看评估',
-  view_interventions: '查看干预'
+  view_interventions: '查看干预',
+  view_detail_denied: '拒绝查看详情',
+  edit_case_denied: '拒绝编辑案例',
+  delete_case_denied: '拒绝删除案例',
+  view_access_logs_denied: '拒绝查看日志',
+  view_authorizations_denied: '拒绝查看授权',
+  add_authorization_denied: '拒绝新增授权',
+  update_authorization_denied: '拒绝编辑授权',
+  delete_authorization_denied: '拒绝删除授权',
+  view_ieps_denied: '拒绝查看 IEP',
+  add_iep_denied: '拒绝新增 IEP',
+  update_iep_denied: '拒绝编辑 IEP',
+  delete_ieps_denied: '拒绝删除 IEP',
+  view_assessments_denied: '拒绝查看评估',
+  add_assessment_denied: '拒绝新增评估',
+  update_assessment_denied: '拒绝编辑评估',
+  delete_assessments_denied: '拒绝删除评估',
+  view_interventions_denied: '拒绝查看干预',
+  add_intervention_denied: '拒绝新增干预',
+  update_intervention_denied: '拒绝编辑干预',
+  delete_interventions_denied: '拒绝删除干预'
 };
 const accessActionOptions = Object.entries(accessActionText).map(([value, label]) => ({ value, label }));
 const accessLogQuery = reactive({ action: '', userId: undefined, keyword: '', pageIndex: 1, pageSize: 10 });

@@ -4,6 +4,7 @@ import (
 	"go-admin/app/edu/models"
 	"go-admin/common/dto"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/gin-gonic/gin/binding"
@@ -118,6 +119,74 @@ func shouldDesensitize(c *gin.Context) bool {
 	return value == "true" || value == "1" || value == "yes"
 }
 
+func allowedAuthorizationScopes(required string) []string {
+	switch required {
+	case "review":
+		return []string{"review"}
+	case "edit":
+		return []string{"edit", "review"}
+	default:
+		return []string{"view", "edit", "review"}
+	}
+}
+
+func authorizationDate(value string) string {
+	value = strings.TrimSpace(value)
+	if len(value) >= 10 {
+		return value[:10]
+	}
+	return value
+}
+
+func isAuthorizationEffective(data models.EduCaseAuthorization) bool {
+	if data.Status != "active" {
+		return false
+	}
+	today := time.Now().Format("2006-01-02")
+	startAt := authorizationDate(data.StartAt)
+	endAt := authorizationDate(data.EndAt)
+	if startAt != "" && startAt > today {
+		return false
+	}
+	if endAt != "" && endAt < today {
+		return false
+	}
+	return true
+}
+
+func (e EduCase) hasCaseAccess(c *gin.Context, caseData models.EduCase, requiredScope string) bool {
+	currentUserId := user.GetUserId(c)
+	if currentUserId == 1 || caseData.CreateBy == currentUserId {
+		return true
+	}
+	list := make([]models.EduCaseAuthorization, 0)
+	err := e.Orm.Where("case_id = ? and user_id = ? and scope in ?", caseData.Id, currentUserId, allowedAuthorizationScopes(requiredScope)).
+		Find(&list).Error
+	if err != nil {
+		return false
+	}
+	for _, item := range list {
+		if isAuthorizationEffective(item) {
+			return true
+		}
+	}
+	return false
+}
+
+func (e EduCase) ensureCaseAccess(c *gin.Context, caseId int, requiredScope string, deniedAction string) (models.EduCase, bool) {
+	var data models.EduCase
+	if err := e.Orm.First(&data, caseId).Error; err != nil {
+		e.Error(500, err, "查询失败")
+		return data, false
+	}
+	if !e.hasCaseAccess(c, data, requiredScope) {
+		e.writeAccessLog(c, caseId, deniedAction)
+		e.Error(403, nil, "无权访问该案例")
+		return data, false
+	}
+	return data, true
+}
+
 func (e EduCase) GetPage(c *gin.Context) {
 	req := caseQuery{}
 	if err := e.MakeContext(c).MakeOrm().Errors; err != nil {
@@ -157,9 +226,8 @@ func (e EduCase) Get(c *gin.Context) {
 		e.Error(500, err, err.Error())
 		return
 	}
-	var data models.EduCase
-	if err := e.Orm.First(&data, c.Param("id")).Error; err != nil {
-		e.Error(500, err, "查询失败")
+	data, ok := e.ensureCaseAccess(c, parsePathId(c.Param("id")), "view", "view_detail_denied")
+	if !ok {
 		return
 	}
 	ieps := make([]models.EduCaseIEP, 0)
@@ -201,6 +269,9 @@ func (e EduCase) Update(c *gin.Context) {
 		e.Error(500, err, err.Error())
 		return
 	}
+	if _, ok := e.ensureCaseAccess(c, parsePathId(c.Param("id")), "edit", "edit_case_denied"); !ok {
+		return
+	}
 	req.SetUpdateBy(user.GetUserId(c))
 	if err := e.Orm.Model(&models.EduCase{}).Where("id = ?", c.Param("id")).Updates(&req).Error; err != nil {
 		e.Error(500, err, "更新失败")
@@ -217,6 +288,11 @@ func (e EduCase) Delete(c *gin.Context) {
 		e.Error(500, err, err.Error())
 		return
 	}
+	for _, id := range req.Ids {
+		if _, ok := e.ensureCaseAccess(c, id, "edit", "delete_case_denied"); !ok {
+			return
+		}
+	}
 	if err := e.Orm.Delete(&models.EduCase{}, req.Ids).Error; err != nil {
 		e.Error(500, err, "删除失败")
 		return
@@ -228,6 +304,9 @@ func (e EduCase) GetAccessLogs(c *gin.Context) {
 	req := caseAccessLogQuery{}
 	if err := e.MakeContext(c).MakeOrm().Errors; err != nil {
 		e.Error(500, err, err.Error())
+		return
+	}
+	if _, ok := e.ensureCaseAccess(c, parsePathId(c.Param("id")), "review", "view_access_logs_denied"); !ok {
 		return
 	}
 	_ = c.ShouldBindQuery(&req)
@@ -261,6 +340,9 @@ func (e EduCase) GetAuthorizations(c *gin.Context) {
 		e.Error(500, err, err.Error())
 		return
 	}
+	if _, ok := e.ensureCaseAccess(c, parsePathId(c.Param("id")), "review", "view_authorizations_denied"); !ok {
+		return
+	}
 	_ = c.ShouldBindQuery(&req)
 	list := make([]models.EduCaseAuthorization, 0)
 	db := e.Orm.Model(&models.EduCaseAuthorization{}).Where("case_id = ?", c.Param("id"))
@@ -291,6 +373,9 @@ func (e EduCase) AddAuthorization(c *gin.Context) {
 		e.Error(500, err, err.Error())
 		return
 	}
+	if _, ok := e.ensureCaseAccess(c, parsePathId(c.Param("id")), "review", "add_authorization_denied"); !ok {
+		return
+	}
 	req.CaseId = parsePathId(c.Param("id"))
 	req.SetCreateBy(user.GetUserId(c))
 	if req.Scope == "" {
@@ -310,6 +395,9 @@ func (e EduCase) UpdateAuthorization(c *gin.Context) {
 	req := models.EduCaseAuthorization{}
 	if err := e.MakeContext(c).MakeOrm().Bind(&req, binding.JSON).Errors; err != nil {
 		e.Error(500, err, err.Error())
+		return
+	}
+	if _, ok := e.ensureCaseAccess(c, parsePathId(c.Param("id")), "review", "update_authorization_denied"); !ok {
 		return
 	}
 	req.SetUpdateBy(user.GetUserId(c))
@@ -339,6 +427,9 @@ func (e EduCase) DeleteAuthorizations(c *gin.Context) {
 		e.Error(500, err, err.Error())
 		return
 	}
+	if _, ok := e.ensureCaseAccess(c, parsePathId(c.Param("id")), "review", "delete_authorization_denied"); !ok {
+		return
+	}
 	if err := e.Orm.Where("case_id = ?", c.Param("id")).Delete(&models.EduCaseAuthorization{}, req.Ids).Error; err != nil {
 		e.Error(500, err, "删除授权失败")
 		return
@@ -350,6 +441,9 @@ func (e EduCase) AddIEP(c *gin.Context) {
 	req := models.EduCaseIEP{}
 	if err := e.MakeContext(c).MakeOrm().Bind(&req, binding.JSON).Errors; err != nil {
 		e.Error(500, err, err.Error())
+		return
+	}
+	if _, ok := e.ensureCaseAccess(c, parsePathId(c.Param("id")), "edit", "add_iep_denied"); !ok {
 		return
 	}
 	req.CaseId = parsePathId(c.Param("id"))
@@ -369,6 +463,9 @@ func (e EduCase) GetIEPs(c *gin.Context) {
 		e.Error(500, err, err.Error())
 		return
 	}
+	if _, ok := e.ensureCaseAccess(c, parsePathId(c.Param("id")), "view", "view_ieps_denied"); !ok {
+		return
+	}
 	list := make([]models.EduCaseIEP, 0)
 	if err := e.Orm.Where("case_id = ?", c.Param("id")).Order("id desc").Find(&list).Error; err != nil {
 		e.Error(500, err, "查询失败")
@@ -385,6 +482,9 @@ func (e EduCase) UpdateIEP(c *gin.Context) {
 	req := models.EduCaseIEP{}
 	if err := e.MakeContext(c).MakeOrm().Bind(&req, binding.JSON).Errors; err != nil {
 		e.Error(500, err, err.Error())
+		return
+	}
+	if _, ok := e.ensureCaseAccess(c, parsePathId(c.Param("id")), "edit", "update_iep_denied"); !ok {
 		return
 	}
 	req.SetUpdateBy(user.GetUserId(c))
@@ -413,6 +513,9 @@ func (e EduCase) DeleteIEPs(c *gin.Context) {
 		e.Error(500, err, err.Error())
 		return
 	}
+	if _, ok := e.ensureCaseAccess(c, parsePathId(c.Param("id")), "edit", "delete_ieps_denied"); !ok {
+		return
+	}
 	if err := e.Orm.Where("case_id = ?", c.Param("id")).Delete(&models.EduCaseIEP{}, req.Ids).Error; err != nil {
 		e.Error(500, err, "删除失败")
 		return
@@ -423,6 +526,9 @@ func (e EduCase) DeleteIEPs(c *gin.Context) {
 func (e EduCase) GetAssessments(c *gin.Context) {
 	if err := e.MakeContext(c).MakeOrm().Errors; err != nil {
 		e.Error(500, err, err.Error())
+		return
+	}
+	if _, ok := e.ensureCaseAccess(c, parsePathId(c.Param("id")), "view", "view_assessments_denied"); !ok {
 		return
 	}
 	list := make([]models.EduCaseAssessment, 0)
@@ -443,6 +549,9 @@ func (e EduCase) InsertAssessment(c *gin.Context) {
 		e.Error(500, err, err.Error())
 		return
 	}
+	if _, ok := e.ensureCaseAccess(c, parsePathId(c.Param("id")), "edit", "add_assessment_denied"); !ok {
+		return
+	}
 	req.CaseId = parsePathId(c.Param("id"))
 	req.SetCreateBy(user.GetUserId(c))
 	if err := e.Orm.Create(&req).Error; err != nil {
@@ -456,6 +565,9 @@ func (e EduCase) UpdateAssessment(c *gin.Context) {
 	req := models.EduCaseAssessment{}
 	if err := e.MakeContext(c).MakeOrm().Bind(&req, binding.JSON).Errors; err != nil {
 		e.Error(500, err, err.Error())
+		return
+	}
+	if _, ok := e.ensureCaseAccess(c, parsePathId(c.Param("id")), "edit", "update_assessment_denied"); !ok {
 		return
 	}
 	req.SetUpdateBy(user.GetUserId(c))
@@ -482,6 +594,9 @@ func (e EduCase) DeleteAssessments(c *gin.Context) {
 		e.Error(500, err, err.Error())
 		return
 	}
+	if _, ok := e.ensureCaseAccess(c, parsePathId(c.Param("id")), "edit", "delete_assessments_denied"); !ok {
+		return
+	}
 	if err := e.Orm.Where("case_id = ?", c.Param("id")).Delete(&models.EduCaseAssessment{}, req.Ids).Error; err != nil {
 		e.Error(500, err, "删除失败")
 		return
@@ -492,6 +607,9 @@ func (e EduCase) DeleteAssessments(c *gin.Context) {
 func (e EduCase) GetInterventions(c *gin.Context) {
 	if err := e.MakeContext(c).MakeOrm().Errors; err != nil {
 		e.Error(500, err, err.Error())
+		return
+	}
+	if _, ok := e.ensureCaseAccess(c, parsePathId(c.Param("id")), "view", "view_interventions_denied"); !ok {
 		return
 	}
 	list := make([]models.EduCaseIntervention, 0)
@@ -512,6 +630,9 @@ func (e EduCase) InsertIntervention(c *gin.Context) {
 		e.Error(500, err, err.Error())
 		return
 	}
+	if _, ok := e.ensureCaseAccess(c, parsePathId(c.Param("id")), "edit", "add_intervention_denied"); !ok {
+		return
+	}
 	req.CaseId = parsePathId(c.Param("id"))
 	req.SetCreateBy(user.GetUserId(c))
 	if req.Status == "" {
@@ -528,6 +649,9 @@ func (e EduCase) UpdateIntervention(c *gin.Context) {
 	req := models.EduCaseIntervention{}
 	if err := e.MakeContext(c).MakeOrm().Bind(&req, binding.JSON).Errors; err != nil {
 		e.Error(500, err, err.Error())
+		return
+	}
+	if _, ok := e.ensureCaseAccess(c, parsePathId(c.Param("id")), "edit", "update_intervention_denied"); !ok {
 		return
 	}
 	req.SetUpdateBy(user.GetUserId(c))
@@ -554,6 +678,9 @@ func (e EduCase) DeleteInterventions(c *gin.Context) {
 	}{}
 	if err := e.MakeContext(c).MakeOrm().Bind(&req, binding.JSON).Errors; err != nil {
 		e.Error(500, err, err.Error())
+		return
+	}
+	if _, ok := e.ensureCaseAccess(c, parsePathId(c.Param("id")), "edit", "delete_interventions_denied"); !ok {
 		return
 	}
 	if err := e.Orm.Where("case_id = ?", c.Param("id")).Delete(&models.EduCaseIntervention{}, req.Ids).Error; err != nil {
