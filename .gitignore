@@ -39,6 +39,7 @@ vendor/
 go-admin/static/uploadfile/
 go-admin/temp/
 go-admin/logs/
+deploy/artifacts/
 
 # Local databases
 *.db
