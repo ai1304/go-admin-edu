@@ -224,14 +224,14 @@ func (e EduResource) GetPage(c *gin.Context) {
 	db := applyResourceFilters(e.Orm.Model(&models.EduResource{}), req)
 	var count int64
 	if err := db.Count(&count).Error; err != nil {
-		e.Error(500, err, "查询失败")
+		e.Error(500, err, "query failed")
 		return
 	}
 	if err := db.Order(resourceOrder(req.Sort)).Limit(req.GetPageSize()).Offset((req.GetPageIndex() - 1) * req.GetPageSize()).Find(&list).Error; err != nil {
-		e.Error(500, err, "查询失败")
+		e.Error(500, err, "query failed")
 		return
 	}
-	e.PageOK(e.toPublicResources(c, list), int(count), req.GetPageIndex(), req.GetPageSize(), "查询成功")
+	e.PageOK(e.toPublicResources(c, list), int(count), req.GetPageIndex(), req.GetPageSize(), "query success")
 }
 
 func (e EduResource) PublicGetPage(c *gin.Context) {
@@ -246,14 +246,14 @@ func (e EduResource) PublicGetPage(c *gin.Context) {
 	db := applyResourceFilters(e.Orm.Model(&models.EduResource{}), req)
 	var count int64
 	if err := db.Count(&count).Error; err != nil {
-		e.Error(500, err, "查询失败")
+		e.Error(500, err, "query failed")
 		return
 	}
 	if err := db.Order(resourceOrder(req.Sort)).Limit(req.GetPageSize()).Offset((req.GetPageIndex() - 1) * req.GetPageSize()).Find(&list).Error; err != nil {
-		e.Error(500, err, "查询失败")
+		e.Error(500, err, "query failed")
 		return
 	}
-	e.PageOK(e.toPublicResources(c, list), int(count), req.GetPageIndex(), req.GetPageSize(), "查询成功")
+	e.PageOK(e.toPublicResources(c, list), int(count), req.GetPageIndex(), req.GetPageSize(), "query success")
 }
 
 func (e EduResource) Get(c *gin.Context) {
@@ -263,7 +263,7 @@ func (e EduResource) Get(c *gin.Context) {
 	}
 	var data models.EduResource
 	if err := e.Orm.First(&data, c.Param("id")).Error; err != nil {
-		e.Error(500, err, "查询失败")
+		e.Error(500, err, "query failed")
 		return
 	}
 	files := make([]models.EduResourceFile, 0)
@@ -271,7 +271,7 @@ func (e EduResource) Get(c *gin.Context) {
 	_ = e.Orm.Model(&models.EduResource{}).Where("id = ?", data.Id).UpdateColumn("view_count", gorm.Expr("view_count + ?", 1)).Error
 	data.ViewCount++
 	resource := e.toPublicResources(c, []models.EduResource{data})[0]
-	e.OK(gin.H{"resource": resource, "files": files}, "查询成功")
+	e.OK(gin.H{"resource": resource, "files": files}, "query success")
 }
 
 func (e EduResource) PublicGet(c *gin.Context) {
@@ -281,7 +281,7 @@ func (e EduResource) PublicGet(c *gin.Context) {
 	}
 	var data models.EduResource
 	if err := e.Orm.Where("status = ?", models.ResourceStatusPublished).First(&data, c.Param("id")).Error; err != nil {
-		e.Error(404, err, "资源不存在")
+		e.Error(404, err, "resource not found")
 		return
 	}
 	files := make([]models.EduResourceFile, 0)
@@ -289,7 +289,7 @@ func (e EduResource) PublicGet(c *gin.Context) {
 	_ = e.Orm.Model(&models.EduResource{}).Where("id = ?", data.Id).UpdateColumn("view_count", gorm.Expr("view_count + ?", 1)).Error
 	data.ViewCount++
 	resource := e.toPublicResources(c, []models.EduResource{data})[0]
-	e.OK(gin.H{"resource": resource, "files": files}, "查询成功")
+	e.OK(gin.H{"resource": resource, "files": files}, "query success")
 }
 
 func (e EduResource) Insert(c *gin.Context) {
@@ -305,14 +305,14 @@ func (e EduResource) Insert(c *gin.Context) {
 		resource.Status = models.ResourceStatusDraft
 	}
 	if err := e.Orm.Create(&resource).Error; err != nil {
-		e.Error(500, err, "创建失败")
+		e.Error(500, err, "create failed")
 		return
 	}
 	if err := e.syncResourceTags(resource.Id, req.TagIds, currentUserId); err != nil {
-		e.Error(500, err, "保存标签失败")
+		e.Error(500, err, "save tags failed")
 		return
 	}
-	e.OK(resource.Id, "创建成功")
+	e.OK(resource.Id, "create success")
 }
 
 func (e EduResource) Update(c *gin.Context) {
@@ -325,14 +325,14 @@ func (e EduResource) Update(c *gin.Context) {
 	currentUserId := user.GetUserId(c)
 	resource.SetUpdateBy(currentUserId)
 	if err := e.Orm.Model(&models.EduResource{}).Where("id = ?", c.Param("id")).Updates(&resource).Error; err != nil {
-		e.Error(500, err, "更新失败")
+		e.Error(500, err, "update failed")
 		return
 	}
 	if err := e.syncResourceTags(parsePathId(c.Param("id")), req.TagIds, currentUserId); err != nil {
-		e.Error(500, err, "保存标签失败")
+		e.Error(500, err, "save tags failed")
 		return
 	}
-	e.OK(c.Param("id"), "更新成功")
+	e.OK(c.Param("id"), "update success")
 }
 
 func (e EduResource) Delete(c *gin.Context) {
@@ -344,11 +344,11 @@ func (e EduResource) Delete(c *gin.Context) {
 		return
 	}
 	if err := e.Orm.Delete(&models.EduResource{}, req.Ids).Error; err != nil {
-		e.Error(500, err, "删除失败")
+		e.Error(500, err, "delete failed")
 		return
 	}
 	_ = e.Orm.Where("resource_id in ?", req.Ids).Delete(&models.EduResourceTagRelation{}).Error
-	e.OK(req.Ids, "删除成功")
+	e.OK(req.Ids, "delete success")
 }
 
 func (e EduResource) SubmitReview(c *gin.Context) {
@@ -360,10 +360,10 @@ func (e EduResource) SubmitReview(c *gin.Context) {
 		"status":    models.ResourceStatusReviewing,
 		"update_by": user.GetUserId(c),
 	}).Error; err != nil {
-		e.Error(500, err, "提交审核失败")
+		e.Error(500, err, "submit review failed")
 		return
 	}
-	e.OK(c.Param("id"), "提交审核成功")
+	e.OK(c.Param("id"), "submit review success")
 }
 
 func (e EduResource) Review(c *gin.Context) {
@@ -374,7 +374,7 @@ func (e EduResource) Review(c *gin.Context) {
 	}
 	var resource models.EduResource
 	if err := e.Orm.First(&resource, c.Param("id")).Error; err != nil {
-		e.Error(500, err, "资源不存在")
+		e.Error(500, err, "resource not found")
 		return
 	}
 	afterStatus := models.ResourceStatusRejected
@@ -395,16 +395,16 @@ func (e EduResource) Review(c *gin.Context) {
 		"update_by": user.GetUserId(c),
 	}).Error; err != nil {
 		tx.Rollback()
-		e.Error(500, err, "审核失败")
+		e.Error(500, err, "review failed")
 		return
 	}
 	if err := tx.Create(&review).Error; err != nil {
 		tx.Rollback()
-		e.Error(500, err, "审核失败")
+		e.Error(500, err, "review failed")
 		return
 	}
 	tx.Commit()
-	e.OK(resource.Id, "审核成功")
+	e.OK(resource.Id, "review success")
 }
 
 func (e EduResource) GetComments(c *gin.Context) {
@@ -414,10 +414,10 @@ func (e EduResource) GetComments(c *gin.Context) {
 	}
 	list := make([]models.EduResourceComment, 0)
 	if err := e.Orm.Where("resource_id = ?", c.Param("id")).Order("id desc").Find(&list).Error; err != nil {
-		e.Error(500, err, "查询失败")
+		e.Error(500, err, "query failed")
 		return
 	}
-	e.OK(list, "查询成功")
+	e.OK(list, "query success")
 }
 
 func (e EduResource) UpdateComment(c *gin.Context) {
@@ -436,10 +436,10 @@ func (e EduResource) UpdateComment(c *gin.Context) {
 	if err := e.Orm.Model(&models.EduResourceComment{}).
 		Where("id = ? and resource_id = ?", c.Param("commentId"), c.Param("id")).
 		Updates(updates).Error; err != nil {
-		e.Error(500, err, "更新失败")
+		e.Error(500, err, "update failed")
 		return
 	}
-	e.OK(c.Param("commentId"), "更新成功")
+	e.OK(c.Param("commentId"), "update success")
 }
 
 func (e EduResource) DeleteComments(c *gin.Context) {
@@ -451,10 +451,10 @@ func (e EduResource) DeleteComments(c *gin.Context) {
 		return
 	}
 	if err := e.Orm.Where("resource_id = ?", c.Param("id")).Delete(&models.EduResourceComment{}, req.Ids).Error; err != nil {
-		e.Error(500, err, "删除失败")
+		e.Error(500, err, "delete failed")
 		return
 	}
-	e.OK(req.Ids, "删除成功")
+	e.OK(req.Ids, "delete success")
 }
 
 func (e EduResource) PublicFavoriteState(c *gin.Context) {
@@ -465,7 +465,7 @@ func (e EduResource) PublicFavoriteState(c *gin.Context) {
 	}
 	_ = c.ShouldBindQuery(&req)
 	if req.UserId == 0 && req.ClientKey == "" {
-		e.OK(gin.H{"favorited": false}, "查询成功")
+		e.OK(gin.H{"favorited": false}, "query success")
 		return
 	}
 	var count int64
@@ -476,10 +476,10 @@ func (e EduResource) PublicFavoriteState(c *gin.Context) {
 		db = db.Where("client_key = ?", req.ClientKey)
 	}
 	if err := db.Count(&count).Error; err != nil {
-		e.Error(500, err, "查询失败")
+		e.Error(500, err, "query failed")
 		return
 	}
-	e.OK(gin.H{"favorited": count > 0}, "查询成功")
+	e.OK(gin.H{"favorited": count > 0}, "query success")
 }
 
 func (e EduResource) PublicFavorite(c *gin.Context) {
@@ -490,12 +490,12 @@ func (e EduResource) PublicFavorite(c *gin.Context) {
 	}
 	resourceId := parsePathId(c.Param("id"))
 	if req.UserId == 0 && req.ClientKey == "" {
-		e.Error(400, nil, "缺少收藏标识")
+		e.Error(400, nil, "missing favorite identity")
 		return
 	}
 	var resource models.EduResource
 	if err := e.Orm.Where("id = ? and status = ?", resourceId, models.ResourceStatusPublished).First(&resource).Error; err != nil {
-		e.Error(404, err, "资源不存在")
+		e.Error(404, err, "resource not found")
 		return
 	}
 	var count int64
@@ -506,20 +506,20 @@ func (e EduResource) PublicFavorite(c *gin.Context) {
 		db = db.Where("client_key = ?", req.ClientKey)
 	}
 	if err := db.Count(&count).Error; err != nil {
-		e.Error(500, err, "收藏失败")
+		e.Error(500, err, "favorite failed")
 		return
 	}
 	if count > 0 {
-		e.OK(resourceId, "已收藏")
+		e.OK(resourceId, "already favorited")
 		return
 	}
 	favorite := models.EduResourceFavorite{ResourceId: resourceId, UserId: req.UserId, ClientKey: req.ClientKey}
 	if err := e.Orm.Create(&favorite).Error; err != nil {
-		e.Error(500, err, "收藏失败")
+		e.Error(500, err, "favorite failed")
 		return
 	}
 	_ = e.Orm.Model(&models.EduResource{}).Where("id = ?", resourceId).UpdateColumn("favorite_count", gorm.Expr("favorite_count + ?", 1)).Error
-	e.OK(resourceId, "收藏成功")
+	e.OK(resourceId, "favorite success")
 }
 
 func (e EduResource) PublicUnfavorite(c *gin.Context) {
@@ -530,7 +530,7 @@ func (e EduResource) PublicUnfavorite(c *gin.Context) {
 	}
 	resourceId := parsePathId(c.Param("id"))
 	if req.UserId == 0 && req.ClientKey == "" {
-		e.Error(400, nil, "缺少收藏标识")
+		e.Error(400, nil, "missing favorite identity")
 		return
 	}
 	db := e.Orm.Where("resource_id = ?", resourceId)
@@ -541,13 +541,13 @@ func (e EduResource) PublicUnfavorite(c *gin.Context) {
 	}
 	result := db.Delete(&models.EduResourceFavorite{})
 	if result.Error != nil {
-		e.Error(500, result.Error, "取消收藏失败")
+		e.Error(500, result.Error, "unfavorite failed")
 		return
 	}
 	if result.RowsAffected > 0 {
 		_ = e.Orm.Model(&models.EduResource{}).Where("id = ?", resourceId).UpdateColumn("favorite_count", gorm.Expr("GREATEST(favorite_count - ?, 0)", 1)).Error
 	}
-	e.OK(resourceId, "取消收藏成功")
+	e.OK(resourceId, "unfavorite success")
 }
 
 func (e EduResource) PublicGetComments(c *gin.Context) {
@@ -557,10 +557,10 @@ func (e EduResource) PublicGetComments(c *gin.Context) {
 	}
 	list := make([]models.EduResourceComment, 0)
 	if err := e.Orm.Where("resource_id = ? and status = ?", c.Param("id"), 1).Order("id desc").Find(&list).Error; err != nil {
-		e.Error(500, err, "查询失败")
+		e.Error(500, err, "query failed")
 		return
 	}
-	e.OK(list, "查询成功")
+	e.OK(list, "query success")
 }
 
 func (e EduResource) PublicCreateComment(c *gin.Context) {
@@ -570,17 +570,30 @@ func (e EduResource) PublicCreateComment(c *gin.Context) {
 		return
 	}
 	if req.Content == "" {
-		e.Error(400, nil, "评论内容不能为空")
+		e.Error(400, nil, "comment content required")
 		return
 	}
 	resourceId := parsePathId(c.Param("id"))
 	var resource models.EduResource
 	if err := e.Orm.Where("id = ? and status = ?", resourceId, models.ResourceStatusPublished).First(&resource).Error; err != nil {
-		e.Error(404, err, "资源不存在")
+		e.Error(404, err, "resource not found")
 		return
 	}
+	if req.ParentId != 0 {
+		var parentCount int64
+		if err := e.Orm.Model(&models.EduResourceComment{}).
+			Where("id = ? and resource_id = ? and status = ?", req.ParentId, resourceId, 1).
+			Count(&parentCount).Error; err != nil {
+			e.Error(500, err, "comment failed")
+			return
+		}
+		if parentCount == 0 {
+			e.Error(400, nil, "parent comment not found")
+			return
+		}
+	}
 	if req.Nickname == "" {
-		req.Nickname = "访客"
+		req.Nickname = "guest"
 	}
 	comment := models.EduResourceComment{
 		ResourceId: resourceId,
@@ -591,8 +604,29 @@ func (e EduResource) PublicCreateComment(c *gin.Context) {
 		Status:     1,
 	}
 	if err := e.Orm.Create(&comment).Error; err != nil {
-		e.Error(500, err, "评论失败")
+		e.Error(500, err, "comment failed")
 		return
 	}
-	e.OK(comment, "评论成功")
+	e.OK(comment, "comment success")
+}
+
+func (e EduResource) PublicLikeComment(c *gin.Context) {
+	if err := e.MakeContext(c).MakeOrm().Errors; err != nil {
+		e.Error(500, err, err.Error())
+		return
+	}
+	resourceId := parsePathId(c.Param("id"))
+	commentId := parsePathId(c.Param("commentId"))
+	result := e.Orm.Model(&models.EduResourceComment{}).
+		Where("id = ? and resource_id = ? and status = ?", commentId, resourceId, 1).
+		UpdateColumn("like_count", gorm.Expr("like_count + ?", 1))
+	if result.Error != nil {
+		e.Error(500, result.Error, "like failed")
+		return
+	}
+	if result.RowsAffected == 0 {
+		e.Error(404, nil, "comment not found")
+		return
+	}
+	e.OK(commentId, "like success")
 }

@@ -76,3 +76,10 @@ export function createResourceComment(resourceId, data) {
     data
   });
 }
+
+export function likeResourceComment(resourceId, commentId) {
+  return request({
+    url: `/portal/resources/${resourceId}/comments/${commentId}/like`,
+    method: "put"
+  });
+}

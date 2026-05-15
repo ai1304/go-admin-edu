@@ -26,26 +26,52 @@
           <article class="detail-panel">
             <h2>资源介绍</h2>
             <p>{{ resource.summary || "暂未填写资源介绍。" }}</p>
-            <div class="comment-block">
-              <h2>评论</h2>
+
+            <section class="comment-block">
+              <div class="section-title">
+                <h2>评论</h2>
+                <span>{{ comments.length }} 条</span>
+              </div>
               <a-form :model="commentForm" layout="vertical" class="comment-form">
+                <div v-if="replyTarget" class="reply-target">
+                  正在回复 {{ replyTarget.nickname || "访客" }}
+                  <a-button type="text" size="small" @click="cancelReply">取消</a-button>
+                </div>
                 <a-form-item field="nickname" label="昵称">
                   <a-input v-model="commentForm.nickname" placeholder="请输入昵称" />
                 </a-form-item>
                 <a-form-item field="content" label="评论内容" required>
                   <a-textarea v-model="commentForm.content" :auto-size="{ minRows: 3, maxRows: 5 }" placeholder="说说你的想法" />
                 </a-form-item>
-                <a-button type="primary" @click="submitComment">发布评论</a-button>
+                <a-button type="primary" @click="submitComment">{{ replyTarget ? "发布回复" : "发布评论" }}</a-button>
               </a-form>
-              <div v-if="comments.length" class="comment-list">
-                <section v-for="item in comments" :key="item.id" class="comment-item">
-                  <strong>{{ item.nickname || "访客" }}</strong>
-                  <p>{{ item.content }}</p>
+
+              <div v-if="commentTree.length" class="comment-list">
+                <section v-for="item in commentTree" :key="item.id" class="comment-item">
+                  <div class="comment-main">
+                    <strong>{{ item.nickname || "访客" }}</strong>
+                    <p>{{ item.content }}</p>
+                    <div class="comment-actions">
+                      <a-button type="text" size="mini" @click="likeComment(item)">点赞 {{ item.likeCount || 0 }}</a-button>
+                      <a-button type="text" size="mini" @click="replyTo(item)">回复</a-button>
+                    </div>
+                  </div>
+                  <div v-if="item.replies?.length" class="reply-list">
+                    <section v-for="reply in item.replies" :key="reply.id" class="reply-item">
+                      <strong>{{ reply.nickname || "访客" }}</strong>
+                      <p>{{ reply.content }}</p>
+                      <div class="comment-actions">
+                        <a-button type="text" size="mini" @click="likeComment(reply)">点赞 {{ reply.likeCount || 0 }}</a-button>
+                        <a-button type="text" size="mini" @click="replyTo(item)">回复</a-button>
+                      </div>
+                    </section>
+                  </div>
                 </section>
               </div>
               <a-empty v-else description="暂无评论" />
-            </div>
+            </section>
           </article>
+
           <aside class="side-panel">
             <a-button :type="favorited ? 'outline' : 'primary'" long class="side-action" @click="toggleFavorite">
               {{ favorited ? "取消收藏" : "收藏资源" }}
@@ -71,7 +97,7 @@
 
 <script setup>
 import { Message } from "@arco-design/web-vue";
-import { onMounted, reactive, ref } from "vue";
+import { computed, onMounted, reactive, ref } from "vue";
 import { useRoute } from "vue-router";
 import PortalLayout from "@/layouts/PortalLayout.vue";
 import {
@@ -81,6 +107,7 @@ import {
   getResourceComments,
   getResourceFavoriteState,
   getResourceFileAccessUrl,
+  likeResourceComment,
   unfavoriteResource
 } from "@/api/resources";
 
@@ -90,7 +117,26 @@ const resource = ref(null);
 const files = ref([]);
 const comments = ref([]);
 const favorited = ref(false);
-const commentForm = reactive({ nickname: "", content: "" });
+const replyTarget = ref(null);
+const commentForm = reactive({ nickname: "", content: "", parentId: 0 });
+
+const commentTree = computed(() => {
+  const nodes = new Map();
+  const roots = [];
+  [...comments.value]
+    .sort((a, b) => (a.id || 0) - (b.id || 0))
+    .forEach((item) => {
+      nodes.set(item.id, { ...item, replies: [] });
+    });
+  nodes.forEach((item) => {
+    if (item.parentId && nodes.has(item.parentId)) {
+      nodes.get(item.parentId).replies.push(item);
+      return;
+    }
+    roots.push(item);
+  });
+  return roots.sort((a, b) => (b.id || 0) - (a.id || 0));
+});
 
 function clientKey() {
   const storageKey = "edu_portal_client_key";
@@ -153,35 +199,47 @@ async function toggleFavorite() {
       resource.value.favoriteCount -= 1;
     }
     Message.success("已取消收藏");
-  } else {
-    await favoriteResource(route.params.id, data);
-    favorited.value = true;
-    if (resource.value) {
-      resource.value.favoriteCount = (resource.value.favoriteCount || 0) + 1;
-    }
-    Message.success("收藏成功");
+    return;
   }
+  await favoriteResource(route.params.id, data);
+  favorited.value = true;
+  if (resource.value) {
+    resource.value.favoriteCount = (resource.value.favoriteCount || 0) + 1;
+  }
+  Message.success("收藏成功");
+}
+
+function replyTo(comment) {
+  replyTarget.value = comment;
+  commentForm.parentId = comment.id;
+}
+
+function cancelReply() {
+  replyTarget.value = null;
+  commentForm.parentId = 0;
 }
 
 async function submitComment() {
-  if (!commentForm.content) {
+  if (!commentForm.content.trim()) {
     Message.warning("请输入评论内容");
     return;
   }
-  await createResourceComment(route.params.id, { ...commentForm });
-  Message.success("评论成功");
+  await createResourceComment(route.params.id, { ...commentForm, content: commentForm.content.trim() });
+  Message.success(replyTarget.value ? "回复成功" : "评论成功");
   commentForm.content = "";
+  cancelReply();
   await fetchComments();
+}
+
+async function likeComment(comment) {
+  await likeResourceComment(route.params.id, comment.id);
+  comment.likeCount = (comment.likeCount || 0) + 1;
 }
 
 onMounted(fetchResource);
 </script>
 
 <style scoped>
-.comment-block {
-  margin-top: 28px;
-}
-
 .detail-cover {
   width: 100%;
   max-height: 320px;
@@ -189,8 +247,37 @@ onMounted(fetchResource);
   border-radius: 8px;
 }
 
+.comment-block {
+  margin-top: 28px;
+}
+
+.section-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.section-title span {
+  color: #86909c;
+  font-size: 13px;
+}
+
 .comment-form {
   margin-bottom: 20px;
+}
+
+.reply-target {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+  padding: 8px 12px;
+  border: 1px solid #bedaff;
+  border-radius: 8px;
+  color: #165dff;
+  background: #f2f7ff;
 }
 
 .comment-list {
@@ -203,12 +290,36 @@ onMounted(fetchResource);
   border: 1px solid #e5e6eb;
   border-radius: 8px;
   padding: 14px 16px;
+  background: #fff;
 }
 
-.comment-item p {
+.comment-main p,
+.reply-item p {
   margin: 8px 0 0;
   color: #4e5969;
   line-height: 1.7;
+  word-break: break-word;
+}
+
+.comment-actions {
+  display: flex;
+  gap: 4px;
+  margin-top: 6px;
+}
+
+.reply-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
+  padding-left: 14px;
+  border-left: 2px solid #e5e6eb;
+}
+
+.reply-item {
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: #f7f8fa;
 }
 
 .side-action {

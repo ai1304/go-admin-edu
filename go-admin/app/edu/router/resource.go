@@ -29,6 +29,7 @@ func registerPublicResourceRouter(v1 *gin.RouterGroup) {
 		r.DELETE("/:id/favorite", resourceApi.PublicUnfavorite)
 		r.GET("/:id/comments", resourceApi.PublicGetComments)
 		r.POST("/:id/comments", resourceApi.PublicCreateComment)
+		r.PUT("/:id/comments/:commentId/like", resourceApi.PublicLikeComment)
 		r.GET("/:id", resourceApi.PublicGet)
 	}
 }
