@@ -16,8 +16,10 @@ func init() {
 func registerPublicResourceRouter(v1 *gin.RouterGroup) {
 	resourceApi := apis.EduResource{}
 	categoryApi := apis.EduResourceCategory{}
+	tagApi := apis.EduResourceTag{}
 	fileApi := apis.EduResourceFile{}
 	v1.GET("/portal/resource-categories", categoryApi.GetPage)
+	v1.GET("/portal/resource-tags", tagApi.GetPage)
 	r := v1.Group("/portal/resources")
 	{
 		r.GET("", resourceApi.PublicGetPage)

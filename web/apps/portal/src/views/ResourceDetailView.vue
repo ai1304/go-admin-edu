@@ -15,6 +15,7 @@
           <div class="meta-row">
             <a-tag color="blue">{{ resource.authorName || "平台资源" }}</a-tag>
             <a-tag>{{ resource.keywords || "暂无关键词" }}</a-tag>
+            <a-tag v-for="tag in resource.tags || []" :key="tag.id" color="arcoblue">{{ tag.name }}</a-tag>
             <a-tag>{{ resource.viewCount || 0 }} 次浏览</a-tag>
             <a-tag>{{ resource.downloadCount || 0 }} 次下载</a-tag>
             <a-tag>{{ resource.favoriteCount || 0 }} 次收藏</a-tag>

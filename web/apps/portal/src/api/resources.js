@@ -16,6 +16,14 @@ export function getResourceCategories(params) {
   });
 }
 
+export function getResourceTags(params) {
+  return request({
+    url: "/portal/resource-tags",
+    method: "get",
+    params
+  });
+}
+
 export function getPublishedResource(id) {
   return request({
     url: `/portal/resources/${id}`,

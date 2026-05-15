@@ -9,3 +9,13 @@ type EduResourceTag struct {
 func (*EduResourceTag) TableName() string {
 	return "edu_resource_tag"
 }
+
+type EduResourceTagRelation struct {
+	BaseModel
+	ResourceId int `json:"resourceId" gorm:"index;comment:资源ID"`
+	TagId      int `json:"tagId" gorm:"index;comment:标签ID"`
+}
+
+func (*EduResourceTagRelation) TableName() string {
+	return "edu_resource_tag_relation"
+}

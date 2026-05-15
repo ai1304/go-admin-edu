@@ -30,6 +30,11 @@
             <a-option v-for="item in categoryOptions.ability_domain" :key="item.id" :value="item.id">{{ item.name }}</a-option>
           </a-select>
         </a-form-item>
+        <a-form-item label="标签">
+          <a-select v-model="query.tagId" allow-clear placeholder="全部标签" style="width: 150px" @change="searchResources">
+            <a-option v-for="item in tagOptions" :key="item.id" :value="item.id">{{ item.name }}</a-option>
+          </a-select>
+        </a-form-item>
         <a-form-item label="排序">
           <a-select v-model="query.sort" style="width: 140px" @change="searchResources">
             <a-option value="latest">最新发布</a-option>
@@ -61,6 +66,7 @@
               <a-tag v-if="categoryName(item.stageCategoryId, 'stage')">{{ categoryName(item.stageCategoryId, 'stage') }}</a-tag>
               <a-tag v-if="categoryName(item.disabilityTypeId, 'disability')">{{ categoryName(item.disabilityTypeId, 'disability') }}</a-tag>
               <a-tag v-if="categoryName(item.resourceTypeId, 'resource_type')" color="blue">{{ categoryName(item.resourceTypeId, 'resource_type') }}</a-tag>
+              <a-tag v-for="tag in item.tags || []" :key="tag.id" color="arcoblue">{{ tag.name }}</a-tag>
             </div>
             <small>{{ item.authorName || "平台资源" }} · {{ item.viewCount || 0 }} 浏览 · {{ item.downloadCount || 0 }} 下载</small>
           </div>
@@ -78,13 +84,15 @@
 <script setup>
 import { onMounted, reactive, ref } from "vue";
 import PortalLayout from "@/layouts/PortalLayout.vue";
-import { getPublishedResources, getResourceCategories } from "@/api/resources";
+import { getPublishedResources, getResourceCategories, getResourceTags } from "@/api/resources";
 
 const loading = ref(false);
 const resources = ref([]);
 const total = ref(0);
+const tagOptions = ref([]);
 const query = reactive({
   keyword: "",
+  tagId: undefined,
   stageCategoryId: undefined,
   disabilityTypeId: undefined,
   resourceTypeId: undefined,
@@ -119,6 +127,12 @@ async function fetchCategories() {
   });
 }
 
+async function fetchTags() {
+  const res = await getResourceTags({ pageIndex: 1, pageSize: 1000, status: 1 });
+  const list = pagePayload(res).list || pagePayload(res) || [];
+  tagOptions.value = list;
+}
+
 async function fetchResources() {
   loading.value = true;
   try {
@@ -138,6 +152,7 @@ function searchResources() {
 
 function resetFilters() {
   query.keyword = "";
+  query.tagId = undefined;
   query.stageCategoryId = undefined;
   query.disabilityTypeId = undefined;
   query.resourceTypeId = undefined;
@@ -157,7 +172,7 @@ function categoryName(id, type) {
 }
 
 onMounted(async () => {
-  await fetchCategories();
+  await Promise.all([fetchCategories(), fetchTags()]);
   await fetchResources();
 });
 </script>

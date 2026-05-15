@@ -22,6 +22,7 @@ type resourceQuery struct {
 	Keyword          string `form:"keyword"`
 	Status           string `form:"status"`
 	Sort             string `form:"sort"`
+	TagId            int    `form:"tagId"`
 	SchoolId         int    `form:"schoolId"`
 	StageCategoryId  int    `form:"stageCategoryId"`
 	DisabilityTypeId int    `form:"disabilityTypeId"`
@@ -33,6 +34,11 @@ type resourceQuery struct {
 type resourceReviewReq struct {
 	Action  string `json:"action"`
 	Comment string `json:"comment"`
+}
+
+type resourceSaveReq struct {
+	models.EduResource
+	TagIds []int `json:"tagIds"`
 }
 
 type resourceFavoriteReq struct {
@@ -49,7 +55,9 @@ type resourceCommentReq struct {
 
 type publicResourceDTO struct {
 	models.EduResource
-	CoverURL string `json:"coverUrl"`
+	TagIds   []int                   `json:"tagIds"`
+	Tags     []models.EduResourceTag `json:"tags"`
+	CoverURL string                  `json:"coverUrl"`
 }
 
 func applyResourceFilters(db *gorm.DB, req resourceQuery) *gorm.DB {
@@ -77,6 +85,12 @@ func applyResourceFilters(db *gorm.DB, req resourceQuery) *gorm.DB {
 	}
 	if req.TopicCategoryId != 0 {
 		db = db.Where("topic_category_id = ?", req.TopicCategoryId)
+	}
+	if req.TagId != 0 {
+		db = db.Where("id in (?)", db.Session(&gorm.Session{}).
+			Model(&models.EduResourceTagRelation{}).
+			Select("resource_id").
+			Where("tag_id = ?", req.TagId))
 	}
 	return db
 }
@@ -124,14 +138,79 @@ func (e EduResource) coverURLMap(c *gin.Context, resources []models.EduResource)
 
 func (e EduResource) toPublicResources(c *gin.Context, resources []models.EduResource) []publicResourceDTO {
 	coverURLs := e.coverURLMap(c, resources)
+	tagMap := e.tagMapForResources(resources)
 	list := make([]publicResourceDTO, 0, len(resources))
 	for _, item := range resources {
+		tags := tagMap[item.Id]
 		list = append(list, publicResourceDTO{
 			EduResource: item,
+			TagIds:      tagIdsFromTags(tags),
+			Tags:        tags,
 			CoverURL:    coverURLs[item.CoverFileId],
 		})
 	}
 	return list
+}
+
+func tagIdsFromTags(tags []models.EduResourceTag) []int {
+	ids := make([]int, 0, len(tags))
+	for _, item := range tags {
+		ids = append(ids, item.Id)
+	}
+	return ids
+}
+
+func (e EduResource) tagMapForResources(resources []models.EduResource) map[int][]models.EduResourceTag {
+	result := make(map[int][]models.EduResourceTag)
+	resourceIds := make([]int, 0, len(resources))
+	for _, item := range resources {
+		resourceIds = append(resourceIds, item.Id)
+	}
+	if len(resourceIds) == 0 {
+		return result
+	}
+	relations := make([]models.EduResourceTagRelation, 0)
+	if err := e.Orm.Where("resource_id in ?", resourceIds).Find(&relations).Error; err != nil {
+		return result
+	}
+	tagIds := make([]int, 0, len(relations))
+	for _, item := range relations {
+		tagIds = append(tagIds, item.TagId)
+	}
+	if len(tagIds) == 0 {
+		return result
+	}
+	tags := make([]models.EduResourceTag, 0)
+	if err := e.Orm.Where("id in ? and status = ?", tagIds, 1).Find(&tags).Error; err != nil {
+		return result
+	}
+	tagById := make(map[int]models.EduResourceTag)
+	for _, item := range tags {
+		tagById[item.Id] = item
+	}
+	for _, relation := range relations {
+		if tag, ok := tagById[relation.TagId]; ok {
+			result[relation.ResourceId] = append(result[relation.ResourceId], tag)
+		}
+	}
+	return result
+}
+
+func (e EduResource) syncResourceTags(resourceId int, tagIds []int, currentUserId int) error {
+	if err := e.Orm.Where("resource_id = ?", resourceId).Delete(&models.EduResourceTagRelation{}).Error; err != nil {
+		return err
+	}
+	for _, tagId := range tagIds {
+		if tagId == 0 {
+			continue
+		}
+		relation := models.EduResourceTagRelation{ResourceId: resourceId, TagId: tagId}
+		relation.SetCreateBy(currentUserId)
+		if err := e.Orm.Create(&relation).Error; err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (e EduResource) GetPage(c *gin.Context) {
@@ -152,7 +231,7 @@ func (e EduResource) GetPage(c *gin.Context) {
 		e.Error(500, err, "查询失败")
 		return
 	}
-	e.PageOK(list, int(count), req.GetPageIndex(), req.GetPageSize(), "查询成功")
+	e.PageOK(e.toPublicResources(c, list), int(count), req.GetPageIndex(), req.GetPageSize(), "查询成功")
 }
 
 func (e EduResource) PublicGetPage(c *gin.Context) {
@@ -191,7 +270,7 @@ func (e EduResource) Get(c *gin.Context) {
 	_ = e.Orm.Where("resource_id = ?", data.Id).Find(&files).Error
 	_ = e.Orm.Model(&models.EduResource{}).Where("id = ?", data.Id).UpdateColumn("view_count", gorm.Expr("view_count + ?", 1)).Error
 	data.ViewCount++
-	resource := publicResourceDTO{EduResource: data, CoverURL: e.coverURLMap(c, []models.EduResource{data})[data.CoverFileId]}
+	resource := e.toPublicResources(c, []models.EduResource{data})[0]
 	e.OK(gin.H{"resource": resource, "files": files}, "查询成功")
 }
 
@@ -209,36 +288,48 @@ func (e EduResource) PublicGet(c *gin.Context) {
 	_ = e.Orm.Where("resource_id = ?", data.Id).Find(&files).Error
 	_ = e.Orm.Model(&models.EduResource{}).Where("id = ?", data.Id).UpdateColumn("view_count", gorm.Expr("view_count + ?", 1)).Error
 	data.ViewCount++
-	resource := publicResourceDTO{EduResource: data, CoverURL: e.coverURLMap(c, []models.EduResource{data})[data.CoverFileId]}
+	resource := e.toPublicResources(c, []models.EduResource{data})[0]
 	e.OK(gin.H{"resource": resource, "files": files}, "查询成功")
 }
 
 func (e EduResource) Insert(c *gin.Context) {
-	req := models.EduResource{}
+	req := resourceSaveReq{}
 	if err := e.MakeContext(c).MakeOrm().Bind(&req, binding.JSON).Errors; err != nil {
 		e.Error(500, err, err.Error())
 		return
 	}
-	req.SetCreateBy(user.GetUserId(c))
-	if req.Status == "" {
-		req.Status = models.ResourceStatusDraft
+	resource := req.EduResource
+	currentUserId := user.GetUserId(c)
+	resource.SetCreateBy(currentUserId)
+	if resource.Status == "" {
+		resource.Status = models.ResourceStatusDraft
 	}
-	if err := e.Orm.Create(&req).Error; err != nil {
+	if err := e.Orm.Create(&resource).Error; err != nil {
 		e.Error(500, err, "创建失败")
 		return
 	}
-	e.OK(req.Id, "创建成功")
+	if err := e.syncResourceTags(resource.Id, req.TagIds, currentUserId); err != nil {
+		e.Error(500, err, "保存标签失败")
+		return
+	}
+	e.OK(resource.Id, "创建成功")
 }
 
 func (e EduResource) Update(c *gin.Context) {
-	req := models.EduResource{}
+	req := resourceSaveReq{}
 	if err := e.MakeContext(c).MakeOrm().Bind(&req, binding.JSON).Errors; err != nil {
 		e.Error(500, err, err.Error())
 		return
 	}
-	req.SetUpdateBy(user.GetUserId(c))
-	if err := e.Orm.Model(&models.EduResource{}).Where("id = ?", c.Param("id")).Updates(&req).Error; err != nil {
+	resource := req.EduResource
+	currentUserId := user.GetUserId(c)
+	resource.SetUpdateBy(currentUserId)
+	if err := e.Orm.Model(&models.EduResource{}).Where("id = ?", c.Param("id")).Updates(&resource).Error; err != nil {
 		e.Error(500, err, "更新失败")
+		return
+	}
+	if err := e.syncResourceTags(parsePathId(c.Param("id")), req.TagIds, currentUserId); err != nil {
+		e.Error(500, err, "保存标签失败")
 		return
 	}
 	e.OK(c.Param("id"), "更新成功")
@@ -256,6 +347,7 @@ func (e EduResource) Delete(c *gin.Context) {
 		e.Error(500, err, "删除失败")
 		return
 	}
+	_ = e.Orm.Where("resource_id in ?", req.Ids).Delete(&models.EduResourceTagRelation{}).Error
 	e.OK(req.Ids, "删除成功")
 }
 

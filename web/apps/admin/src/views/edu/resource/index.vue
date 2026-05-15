@@ -11,6 +11,11 @@
             <a-option v-for="item in statusOptions" :key="item.value" :value="item.value">{{ item.label }}</a-option>
           </a-select>
         </a-form-item>
+        <a-form-item label="标签">
+          <a-select v-model="queryForm.tagId" allow-clear placeholder="请选择标签" style="width: 160px">
+            <a-option v-for="item in tagOptions" :key="item.id" :value="item.id">{{ item.name }}</a-option>
+          </a-select>
+        </a-form-item>
         <a-form-item>
           <a-space>
             <a-button type="primary" @click="fetchData">查询</a-button>
@@ -23,6 +28,12 @@
 
     <a-card :bordered="false" class="cardStyle table-card">
       <a-table :columns="columns" :data="tableData" :pagination="pagination" row-key="id" @page-change="handlePageChange">
+        <template #tags="{ record }">
+          <a-space wrap>
+            <a-tag v-for="item in record.tags || []" :key="item.id" color="blue">{{ item.name }}</a-tag>
+            <span v-if="!record.tags?.length">-</span>
+          </a-space>
+        </template>
         <template #status="{ record }">
           <a-tag :color="statusColor[record.status]">{{ statusText[record.status] || record.status }}</a-tag>
         </template>
@@ -101,6 +112,13 @@
             </a-form-item>
           </a-col>
           <a-col :span="24">
+            <a-form-item field="tagIds" label="资源标签">
+              <a-select v-model="formModel.tagIds" multiple allow-clear placeholder="请选择资源标签">
+                <a-option v-for="item in tagOptions" :key="item.id" :value="item.id">{{ item.name }}</a-option>
+              </a-select>
+            </a-form-item>
+          </a-col>
+          <a-col :span="24">
             <a-form-item field="keywords" label="关键词">
               <a-input v-model="formModel.keywords" placeholder="多个关键词用逗号分隔" />
             </a-form-item>
@@ -158,6 +176,7 @@ import {
   getResourceCategories,
   getResourceComments,
   getResourceFiles,
+  getResourceTags,
   getResources,
   removeResourceComments,
   removeResourceFiles,
@@ -179,7 +198,7 @@ const statusOptions = [
 const statusText = Object.fromEntries(statusOptions.map((item) => [item.value, item.label]));
 const statusColor = { draft: 'gray', reviewing: 'orange', published: 'green', rejected: 'red', offline: 'gray' };
 
-const queryForm = reactive({ keyword: '', status: '', pageIndex: 1, pageSize: 10 });
+const queryForm = reactive({ keyword: '', status: '', tagId: undefined, pageIndex: 1, pageSize: 10 });
 const tableData = ref([]);
 const pagination = reactive({ current: 1, pageSize: 10, total: 0 });
 const formVisible = ref(false);
@@ -192,11 +211,13 @@ const commentList = ref([]);
 const currentResource = ref(null);
 const formModel = reactive(defaultForm());
 const categoryOptions = reactive({});
+const tagOptions = ref([]);
 
 const columns = [
   { title: '资源标题', dataIndex: 'title', ellipsis: true, tooltip: true },
   { title: '作者', dataIndex: 'authorName', width: 120 },
   { title: '学校 ID', dataIndex: 'schoolId', width: 100 },
+  { title: '标签', slotName: 'tags', width: 180 },
   { title: '状态', slotName: 'status', width: 110 },
   { title: '浏览', dataIndex: 'viewCount', width: 90 },
   { title: '下载', dataIndex: 'downloadCount', width: 90 },
@@ -231,7 +252,8 @@ function defaultForm() {
     disabilityTypeId: undefined,
     resourceTypeId: undefined,
     abilityDomainId: undefined,
-    topicCategoryId: undefined
+    topicCategoryId: undefined,
+    tagIds: []
   };
 }
 
@@ -267,6 +289,12 @@ async function fetchCategories() {
   });
 }
 
+async function fetchTags() {
+  const res = await getResourceTags({ pageIndex: 1, pageSize: 1000, status: 1 });
+  const payload = getPagePayload(res);
+  tagOptions.value = payload.list || payload || [];
+}
+
 function getCategoryOptions(type) {
   return categoryOptions[type] || [];
 }
@@ -280,6 +308,7 @@ function handlePageChange(page) {
 function resetQuery() {
   queryForm.keyword = '';
   queryForm.status = '';
+  queryForm.tagId = undefined;
   queryForm.pageIndex = 1;
   pagination.current = 1;
   fetchData();
@@ -424,6 +453,7 @@ function formatSize(size = 0) {
 onMounted(() => {
   fetchData();
   fetchCategories();
+  fetchTags();
 });
 </script>
 
