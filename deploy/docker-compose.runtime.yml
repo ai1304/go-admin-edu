@@ -47,6 +47,7 @@ services:
     image: docker.1ms.run/library/alpine:3.21
     container_name: go-admin-edu-api
     restart: unless-stopped
+    working_dir: /app
     depends_on:
       mysql:
         condition: service_healthy
