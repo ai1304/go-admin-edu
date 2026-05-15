@@ -135,6 +135,11 @@
             </a-table>
           </a-space>
         </a-tab-pane>
+        <a-tab-pane key="accessLogs" title="访问日志">
+          <a-table :columns="accessLogColumns" :data="accessLogList" :pagination="false" row-key="id">
+            <template #action="{ record }">{{ accessActionText[record.action] || record.action }}</template>
+          </a-table>
+        </a-tab-pane>
       </a-tabs>
     </a-modal>
 
@@ -219,6 +224,7 @@ import {
   addCaseAssessment,
   addCaseIep,
   addCaseIntervention,
+  getCaseAccessLogs,
   getCaseAssessments,
   getCaseIeps,
   getCaseInterventions,
@@ -270,6 +276,13 @@ const interventionModel = reactive(defaultInterventionForm());
 const iepList = ref([]);
 const assessmentList = ref([]);
 const interventionList = ref([]);
+const accessLogList = ref([]);
+const accessActionText = {
+  view_detail: '查看详情',
+  view_ieps: '查看 IEP',
+  view_assessments: '查看评估',
+  view_interventions: '查看干预'
+};
 
 const columns = [
   { title: '案例名称', dataIndex: 'title', ellipsis: true, tooltip: true },
@@ -296,6 +309,14 @@ const interventionColumns = [
   { title: '结束日期', dataIndex: 'endDate', width: 120 },
   { title: '状态', slotName: 'status', width: 100 },
   { title: '操作', slotName: 'operations', width: 150 }
+];
+const accessLogColumns = [
+  { title: '动作', slotName: 'action', width: 120 },
+  { title: '用户 ID', dataIndex: 'userId', width: 100 },
+  { title: 'IP', dataIndex: 'ip', width: 140 },
+  { title: '路径', dataIndex: 'path', ellipsis: true, tooltip: true },
+  { title: 'User-Agent', dataIndex: 'userAgent', ellipsis: true, tooltip: true },
+  { title: '时间', dataIndex: 'createdAt', width: 170 }
 ];
 
 function defaultForm() {
@@ -395,14 +416,16 @@ async function openManage(record) {
 
 async function fetchManageData() {
   if (!currentCase.value?.id) return;
-  const [iepsRes, assessmentsRes, interventionsRes] = await Promise.all([
+  const [iepsRes, assessmentsRes, interventionsRes, accessLogsRes] = await Promise.all([
     getCaseIeps(currentCase.value.id),
     getCaseAssessments(currentCase.value.id),
-    getCaseInterventions(currentCase.value.id)
+    getCaseInterventions(currentCase.value.id),
+    getCaseAccessLogs(currentCase.value.id)
   ]);
   iepList.value = iepsRes.data || [];
   assessmentList.value = assessmentsRes.data || [];
   interventionList.value = interventionsRes.data || [];
+  accessLogList.value = accessLogsRes.data || [];
 }
 
 function openIepCreate() {

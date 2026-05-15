@@ -21,6 +21,20 @@ type caseQuery struct {
 	SchoolId int    `form:"schoolId"`
 }
 
+func (e EduCase) writeAccessLog(c *gin.Context, caseId int, action string) {
+	log := models.EduCaseAccessLog{
+		CaseId:    caseId,
+		UserId:    user.GetUserId(c),
+		Action:    action,
+		Path:      c.Request.URL.Path,
+		Method:    c.Request.Method,
+		Ip:        c.ClientIP(),
+		UserAgent: c.Request.UserAgent(),
+	}
+	log.SetCreateBy(log.UserId)
+	_ = e.Orm.Create(&log).Error
+}
+
 func (e EduCase) GetPage(c *gin.Context) {
 	req := caseQuery{}
 	if err := e.MakeContext(c).MakeOrm().Errors; err != nil {
@@ -68,6 +82,7 @@ func (e EduCase) Get(c *gin.Context) {
 	_ = e.Orm.Where("case_id = ?", data.Id).Order("id desc").Find(&ieps).Error
 	_ = e.Orm.Where("case_id = ?", data.Id).Order("id desc").Find(&assessments).Error
 	_ = e.Orm.Where("case_id = ?", data.Id).Order("id desc").Find(&interventions).Error
+	e.writeAccessLog(c, data.Id, "view_detail")
 	e.OK(gin.H{"case": data, "ieps": ieps, "assessments": assessments, "interventions": interventions}, "查询成功")
 }
 
@@ -117,6 +132,19 @@ func (e EduCase) Delete(c *gin.Context) {
 	e.OK(req.Ids, "删除成功")
 }
 
+func (e EduCase) GetAccessLogs(c *gin.Context) {
+	if err := e.MakeContext(c).MakeOrm().Errors; err != nil {
+		e.Error(500, err, err.Error())
+		return
+	}
+	list := make([]models.EduCaseAccessLog, 0)
+	if err := e.Orm.Where("case_id = ?", c.Param("id")).Order("id desc").Limit(200).Find(&list).Error; err != nil {
+		e.Error(500, err, "查询失败")
+		return
+	}
+	e.OK(list, "查询成功")
+}
+
 func (e EduCase) AddIEP(c *gin.Context) {
 	req := models.EduCaseIEP{}
 	if err := e.MakeContext(c).MakeOrm().Bind(&req, binding.JSON).Errors; err != nil {
@@ -145,6 +173,7 @@ func (e EduCase) GetIEPs(c *gin.Context) {
 		e.Error(500, err, "查询失败")
 		return
 	}
+	e.writeAccessLog(c, parsePathId(c.Param("id")), "view_ieps")
 	e.OK(list, "查询成功")
 }
 
@@ -197,6 +226,7 @@ func (e EduCase) GetAssessments(c *gin.Context) {
 		e.Error(500, err, "查询失败")
 		return
 	}
+	e.writeAccessLog(c, parsePathId(c.Param("id")), "view_assessments")
 	e.OK(list, "查询成功")
 }
 
@@ -262,6 +292,7 @@ func (e EduCase) GetInterventions(c *gin.Context) {
 		e.Error(500, err, "查询失败")
 		return
 	}
+	e.writeAccessLog(c, parsePathId(c.Param("id")), "view_interventions")
 	e.OK(list, "查询成功")
 }
 

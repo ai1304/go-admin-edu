@@ -55,3 +55,18 @@ type EduCaseIntervention struct {
 func (*EduCaseIntervention) TableName() string {
 	return "edu_case_intervention"
 }
+
+type EduCaseAccessLog struct {
+	BaseModel
+	CaseId    int    `json:"caseId" gorm:"index;comment:案例ID"`
+	UserId    int    `json:"userId" gorm:"index;comment:访问用户ID"`
+	Action    string `json:"action" gorm:"size:64;index;comment:访问动作"`
+	Path      string `json:"path" gorm:"size:255;comment:请求路径"`
+	Method    string `json:"method" gorm:"size:16;comment:请求方法"`
+	Ip        string `json:"ip" gorm:"size:64;comment:访问IP"`
+	UserAgent string `json:"userAgent" gorm:"size:512;comment:User-Agent"`
+}
+
+func (*EduCaseAccessLog) TableName() string {
+	return "edu_case_access_log"
+}

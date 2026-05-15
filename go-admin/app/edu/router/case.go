@@ -21,6 +21,7 @@ func registerCaseRouter(v1 *gin.RouterGroup, authMiddleware *jwt.GinJWTMiddlewar
 		r.POST("", api.Insert)
 		r.PUT("/:id", api.Update)
 		r.DELETE("", api.Delete)
+		r.GET("/:id/access-logs", api.GetAccessLogs)
 		r.GET("/:id/ieps", api.GetIEPs)
 		r.POST("/:id/ieps", api.AddIEP)
 		r.PUT("/:id/ieps/:iepId", api.UpdateIEP)

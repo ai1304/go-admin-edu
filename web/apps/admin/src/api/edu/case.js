@@ -22,6 +22,10 @@ export function removeCases(data) {
   return request({ url, method: 'delete', data });
 }
 
+export function getCaseAccessLogs(id) {
+  return request({ url: `${url}/${id}/access-logs`, method: 'get' });
+}
+
 export function addCaseIep(id, data) {
   return request({ url: `${url}/${id}/ieps`, method: 'post', data });
 }
