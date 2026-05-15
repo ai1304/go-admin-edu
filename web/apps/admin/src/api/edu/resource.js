@@ -33,6 +33,14 @@ export function reviewResource(id, data) {
   return request({ url: `${resourceUrl}/${id}/review`, method: 'put', data });
 }
 
+export function getResourceReviews(resourceId) {
+  return request({ url: `${resourceUrl}/${resourceId}/reviews`, method: 'get' });
+}
+
+export function updateResourceStatus(resourceId, data) {
+  return request({ url: `${resourceUrl}/${resourceId}/status`, method: 'put', data });
+}
+
 export function getResourceComments(resourceId) {
   return request({ url: `${resourceUrl}/${resourceId}/comments`, method: 'get' });
 }

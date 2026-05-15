@@ -65,6 +65,8 @@ func registerResourceRouter(v1 *gin.RouterGroup, authMiddleware *jwt.GinJWTMiddl
 		resources.DELETE("", resourceApi.Delete)
 		resources.PUT("/:id/submit-review", resourceApi.SubmitReview)
 		resources.PUT("/:id/review", resourceApi.Review)
+		resources.GET("/:id/reviews", resourceApi.GetReviews)
+		resources.PUT("/:id/status", resourceApi.UpdateStatus)
 		resources.GET("/:id/comments", resourceApi.GetComments)
 		resources.PUT("/:id/comments/:commentId", resourceApi.UpdateComment)
 		resources.DELETE("/:id/comments", resourceApi.DeleteComments)

@@ -38,13 +38,16 @@
           <a-tag :color="statusColor[record.status]">{{ statusText[record.status] || record.status }}</a-tag>
         </template>
         <template #operations="{ record }">
-          <a-space>
+          <a-space wrap>
             <a-button type="text" size="small" @click="openEdit(record)">编辑</a-button>
             <a-button type="text" size="small" @click="openFiles(record)">附件</a-button>
             <a-button type="text" size="small" @click="openComments(record)">评论</a-button>
+            <a-button type="text" size="small" @click="openReviews(record)">记录</a-button>
             <a-button v-if="record.status === 'draft' || record.status === 'rejected'" type="text" size="small" @click="handleSubmitReview(record)">提交审核</a-button>
             <a-button v-if="record.status === 'reviewing'" type="text" size="small" @click="handleReview(record, 'approve')">通过</a-button>
             <a-button v-if="record.status === 'reviewing'" type="text" status="warning" size="small" @click="handleReview(record, 'reject')">驳回</a-button>
+            <a-button v-if="record.status === 'published'" type="text" status="warning" size="small" @click="handleStatusChange(record, 'offline')">下架</a-button>
+            <a-button v-if="record.status === 'offline'" type="text" status="success" size="small" @click="handleStatusChange(record, 'published')">恢复发布</a-button>
             <a-button type="text" status="danger" size="small" @click="handleDelete(record)">删除</a-button>
           </a-space>
         </template>
@@ -61,7 +64,7 @@
           </a-col>
           <a-col :span="12">
             <a-form-item field="authorName" label="作者">
-              <a-input v-model="formModel.authorName" placeholder="请输入作者/教师" />
+              <a-input v-model="formModel.authorName" placeholder="请输入作者或教师" />
             </a-form-item>
           </a-col>
           <a-col :span="12">
@@ -165,6 +168,22 @@
         </template>
       </a-table>
     </a-modal>
+
+    <a-modal v-model:visible="reviewVisible" :title="`${currentResource?.title || ''} 审核记录`" width="860px" :footer="false">
+      <a-table :columns="reviewColumns" :data="reviewList" :pagination="false" row-key="id">
+        <template #action="{ record }">
+          <a-tag :color="actionColor[record.action] || 'gray'">{{ actionText[record.action] || record.action }}</a-tag>
+        </template>
+        <template #statusChange="{ record }">
+          <a-space>
+            <a-tag :color="statusColor[record.beforeStatus]">{{ statusText[record.beforeStatus] || record.beforeStatus || '-' }}</a-tag>
+            <span>→</span>
+            <a-tag :color="statusColor[record.afterStatus]">{{ statusText[record.afterStatus] || record.afterStatus || '-' }}</a-tag>
+          </a-space>
+        </template>
+        <template #createdAt="{ record }">{{ formatDate(record.createdAt) }}</template>
+      </a-table>
+    </a-modal>
   </div>
 </template>
 
@@ -176,6 +195,7 @@ import {
   getResourceCategories,
   getResourceComments,
   getResourceFiles,
+  getResourceReviews,
   getResourceTags,
   getResources,
   removeResourceComments,
@@ -183,8 +203,9 @@ import {
   removeResources,
   reviewResource,
   submitResourceReview,
-  updateResourceComment,
   updateResource,
+  updateResourceComment,
+  updateResourceStatus,
   uploadResourceFile
 } from '@/api/edu/resource';
 
@@ -197,6 +218,8 @@ const statusOptions = [
 ];
 const statusText = Object.fromEntries(statusOptions.map((item) => [item.value, item.label]));
 const statusColor = { draft: 'gray', reviewing: 'orange', published: 'green', rejected: 'red', offline: 'gray' };
+const actionText = { approve: '审核通过', reject: '审核驳回', publish: '恢复发布', offline: '下架' };
+const actionColor = { approve: 'green', reject: 'red', publish: 'green', offline: 'orange' };
 
 const queryForm = reactive({ keyword: '', status: '', tagId: undefined, pageIndex: 1, pageSize: 10 });
 const tableData = ref([]);
@@ -204,10 +227,12 @@ const pagination = reactive({ current: 1, pageSize: 10, total: 0 });
 const formVisible = ref(false);
 const fileVisible = ref(false);
 const commentVisible = ref(false);
+const reviewVisible = ref(false);
 const fileInput = ref(null);
 const uploadUsage = ref('attachment');
 const fileList = ref([]);
 const commentList = ref([]);
+const reviewList = ref([]);
 const currentResource = ref(null);
 const formModel = reactive(defaultForm());
 const categoryOptions = reactive({});
@@ -222,7 +247,7 @@ const columns = [
   { title: '浏览', dataIndex: 'viewCount', width: 90 },
   { title: '下载', dataIndex: 'downloadCount', width: 90 },
   { title: '收藏', dataIndex: 'favoriteCount', width: 90 },
-  { title: '操作', slotName: 'operations', width: 360 }
+  { title: '操作', slotName: 'operations', width: 430 }
 ];
 const fileColumns = [
   { title: '文件名', dataIndex: 'originalName', ellipsis: true, tooltip: true },
@@ -233,10 +258,18 @@ const fileColumns = [
 ];
 const commentColumns = [
   { title: '昵称', dataIndex: 'nickname', width: 140 },
+  { title: '父评论', dataIndex: 'parentId', width: 90 },
   { title: '内容', dataIndex: 'content', ellipsis: true, tooltip: true },
   { title: '点赞', dataIndex: 'likeCount', width: 80 },
   { title: '状态', slotName: 'status', width: 90 },
   { title: '操作', slotName: 'commentOperations', width: 140 }
+];
+const reviewColumns = [
+  { title: '动作', slotName: 'action', width: 120 },
+  { title: '状态变化', slotName: 'statusChange', width: 220 },
+  { title: '意见', dataIndex: 'comment', ellipsis: true, tooltip: true },
+  { title: '操作人', dataIndex: 'createBy', width: 90 },
+  { title: '时间', slotName: 'createdAt', width: 180 }
 ];
 
 function defaultForm() {
@@ -258,7 +291,7 @@ function defaultForm() {
 }
 
 function assignForm(data = {}) {
-  Object.assign(formModel, defaultForm(), data);
+  Object.assign(formModel, defaultForm(), data, { tagIds: data.tagIds || [] });
 }
 
 function getPagePayload(res) {
@@ -364,6 +397,22 @@ async function handleReview(record, action) {
   fetchData();
 }
 
+function handleStatusChange(record, status) {
+  const isOffline = status === 'offline';
+  Modal.confirm({
+    title: isOffline ? '确认下架资源' : '确认恢复发布',
+    content: isOffline ? `下架后门户将不再展示「${record.title}」。` : `恢复后门户将重新展示「${record.title}」。`,
+    async onOk() {
+      await updateResourceStatus(record.id, {
+        status,
+        comment: isOffline ? '运营下架' : '恢复发布'
+      });
+      Message.success(isOffline ? '已下架' : '已恢复发布');
+      fetchData();
+    }
+  });
+}
+
 async function openFiles(record) {
   currentResource.value = record;
   fileVisible.value = true;
@@ -374,6 +423,12 @@ async function openComments(record) {
   currentResource.value = record;
   commentVisible.value = true;
   await fetchComments();
+}
+
+async function openReviews(record) {
+  currentResource.value = record;
+  reviewVisible.value = true;
+  await fetchReviews();
 }
 
 async function fetchFiles() {
@@ -387,6 +442,12 @@ async function fetchComments() {
   if (!currentResource.value?.id) return;
   const res = await getResourceComments(currentResource.value.id);
   commentList.value = res.data || [];
+}
+
+async function fetchReviews() {
+  if (!currentResource.value?.id) return;
+  const res = await getResourceReviews(currentResource.value.id);
+  reviewList.value = res.data || [];
 }
 
 function triggerUpload(usage = 'attachment') {
@@ -448,6 +509,11 @@ function formatSize(size = 0) {
   if (size < 1024) return `${size} B`;
   if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`;
   return `${(size / 1024 / 1024).toFixed(1)} MB`;
+}
+
+function formatDate(value) {
+  if (!value) return '-';
+  return new Date(value).toLocaleString();
 }
 
 onMounted(() => {

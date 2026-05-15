@@ -36,6 +36,11 @@ type resourceReviewReq struct {
 	Comment string `json:"comment"`
 }
 
+type resourceStatusReq struct {
+	Status  string `json:"status"`
+	Comment string `json:"comment"`
+}
+
 type resourceSaveReq struct {
 	models.EduResource
 	TagIds []int `json:"tagIds"`
@@ -405,6 +410,72 @@ func (e EduResource) Review(c *gin.Context) {
 	}
 	tx.Commit()
 	e.OK(resource.Id, "review success")
+}
+
+func (e EduResource) GetReviews(c *gin.Context) {
+	if err := e.MakeContext(c).MakeOrm().Errors; err != nil {
+		e.Error(500, err, err.Error())
+		return
+	}
+	list := make([]models.EduResourceReview, 0)
+	if err := e.Orm.Where("resource_id = ?", c.Param("id")).Order("id desc").Find(&list).Error; err != nil {
+		e.Error(500, err, "query failed")
+		return
+	}
+	e.OK(list, "query success")
+}
+
+func (e EduResource) UpdateStatus(c *gin.Context) {
+	req := resourceStatusReq{}
+	if err := e.MakeContext(c).MakeOrm().Bind(&req, binding.JSON).Errors; err != nil {
+		e.Error(500, err, err.Error())
+		return
+	}
+	if req.Status != models.ResourceStatusPublished && req.Status != models.ResourceStatusOffline {
+		e.Error(400, nil, "unsupported status")
+		return
+	}
+	var resource models.EduResource
+	if err := e.Orm.First(&resource, c.Param("id")).Error; err != nil {
+		e.Error(404, err, "resource not found")
+		return
+	}
+	if resource.Status == req.Status {
+		e.OK(resource.Id, "status unchanged")
+		return
+	}
+	if resource.Status != models.ResourceStatusPublished && resource.Status != models.ResourceStatusOffline {
+		e.Error(400, nil, "only published or offline resource can change status")
+		return
+	}
+	action := "publish"
+	if req.Status == models.ResourceStatusOffline {
+		action = "offline"
+	}
+	review := models.EduResourceReview{
+		ResourceId:   resource.Id,
+		Action:       action,
+		Comment:      req.Comment,
+		BeforeStatus: resource.Status,
+		AfterStatus:  req.Status,
+	}
+	review.SetCreateBy(user.GetUserId(c))
+	tx := e.Orm.Begin()
+	if err := tx.Model(&models.EduResource{}).Where("id = ?", resource.Id).Updates(map[string]interface{}{
+		"status":    req.Status,
+		"update_by": user.GetUserId(c),
+	}).Error; err != nil {
+		tx.Rollback()
+		e.Error(500, err, "status update failed")
+		return
+	}
+	if err := tx.Create(&review).Error; err != nil {
+		tx.Rollback()
+		e.Error(500, err, "status update failed")
+		return
+	}
+	tx.Commit()
+	e.OK(resource.Id, "status update success")
 }
 
 func (e EduResource) GetComments(c *gin.Context) {
