@@ -1,6 +1,6 @@
 services:
   mysql:
-    image: mysql:8.0
+    image: docker.1ms.run/library/mysql:8.0
     container_name: go-admin-edu-mysql
     restart: unless-stopped
     environment:
@@ -21,7 +21,7 @@ services:
       retries: 10
 
   redis:
-    image: redis:7-alpine
+    image: docker.1ms.run/library/redis:7-alpine
     container_name: go-admin-edu-redis
     restart: unless-stopped
     ports:
@@ -30,7 +30,7 @@ services:
       - redis-data:/data
 
   minio:
-    image: minio/minio:latest
+    image: docker.1ms.run/minio/minio:latest
     container_name: go-admin-edu-minio
     restart: unless-stopped
     environment:
