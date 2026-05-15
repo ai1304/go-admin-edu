@@ -11,6 +11,9 @@
             <a-option v-for="item in statusOptions" :key="item.value" :value="item.value">{{ item.label }}</a-option>
           </a-select>
         </a-form-item>
+        <a-form-item label="脱敏">
+          <a-switch v-model="queryForm.desensitize" />
+        </a-form-item>
         <a-form-item>
           <a-space>
             <a-button type="primary" @click="fetchData">查询</a-button>
@@ -260,7 +263,7 @@ const subStatusText = Object.fromEntries(subStatusOptions.map((item) => [item.va
 const subStatusColor = { draft: 'gray', active: 'green', finished: 'blue' };
 const interventionStatusText = Object.fromEntries(interventionStatusOptions.map((item) => [item.value, item.label]));
 const interventionStatusColor = { active: 'green', paused: 'orange', finished: 'blue' };
-const queryForm = reactive({ keyword: '', status: '', pageIndex: 1, pageSize: 10 });
+const queryForm = reactive({ keyword: '', status: '', desensitize: false, pageIndex: 1, pageSize: 10 });
 const tableData = ref([]);
 const pagination = reactive({ current: 1, pageSize: 10, total: 0 });
 const formVisible = ref(false);
@@ -365,6 +368,7 @@ function handlePageChange(page) {
 function resetQuery() {
   queryForm.keyword = '';
   queryForm.status = '';
+  queryForm.desensitize = false;
   queryForm.pageIndex = 1;
   pagination.current = 1;
   fetchData();

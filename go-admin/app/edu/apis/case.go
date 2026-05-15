@@ -16,9 +16,10 @@ type EduCase struct {
 
 type caseQuery struct {
 	dto.Pagination
-	Keyword  string `form:"keyword"`
-	Status   string `form:"status"`
-	SchoolId int    `form:"schoolId"`
+	Keyword     string `form:"keyword"`
+	Status      string `form:"status"`
+	SchoolId    int    `form:"schoolId"`
+	Desensitize bool   `form:"desensitize"`
 }
 
 func (e EduCase) writeAccessLog(c *gin.Context, caseId int, action string) {
@@ -33,6 +34,36 @@ func (e EduCase) writeAccessLog(c *gin.Context, caseId int, action string) {
 	}
 	log.SetCreateBy(log.UserId)
 	_ = e.Orm.Create(&log).Error
+}
+
+func desensitizeCases(list []models.EduCase) {
+	for index := range list {
+		list[index].StudentName = maskName(list[index].StudentName)
+		list[index].StudentCode = maskCode(list[index].StudentCode)
+		list[index].Birthday = ""
+	}
+}
+
+func maskName(value string) string {
+	if value == "" {
+		return ""
+	}
+	runes := []rune(value)
+	if len(runes) == 1 {
+		return "*"
+	}
+	return string(runes[0]) + "**"
+}
+
+func maskCode(value string) string {
+	if value == "" {
+		return ""
+	}
+	runes := []rune(value)
+	if len(runes) <= 4 {
+		return "****"
+	}
+	return string(runes[:2]) + "****" + string(runes[len(runes)-2:])
 }
 
 func (e EduCase) GetPage(c *gin.Context) {
@@ -62,6 +93,9 @@ func (e EduCase) GetPage(c *gin.Context) {
 	if err := db.Order("id desc").Limit(req.GetPageSize()).Offset((req.GetPageIndex() - 1) * req.GetPageSize()).Find(&list).Error; err != nil {
 		e.Error(500, err, "查询失败")
 		return
+	}
+	if req.Desensitize {
+		desensitizeCases(list)
 	}
 	e.PageOK(list, int(count), req.GetPageIndex(), req.GetPageSize(), "查询成功")
 }
