@@ -3,7 +3,7 @@ WORKDIR /src
 ENV GOPROXY=https://goproxy.cn,direct
 RUN sed -i 's#https://dl-cdn.alpinelinux.org/alpine#https://mirrors.aliyun.com/alpine#g' /etc/apk/repositories \
     && apk add --no-cache gcc g++ musl-dev
-COPY go.mod ./
+COPY go.mod go.sum ./
 RUN go mod download
 COPY . .
 RUN go build -o /out/go-admin .
