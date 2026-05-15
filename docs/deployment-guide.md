@@ -29,7 +29,7 @@
 
 当前限制：
 
-- 当前机器 Docker CLI 不可用，尚未执行 `docker compose config` 和完整容器启动验证。
+- 当前机器已安装 Docker，已验证可通过 `docker compose up -d minio` 启动 MinIO。
 - Compose 仍属于开发环境配置，生产部署前需要拆分密钥、域名、HTTPS、持久化路径和备份策略。
 
 ## 3. 环境要求
@@ -265,9 +265,17 @@ docker compose up -d api admin-web portal-web
 
 说明：
 
-- 当前环境未安装 Docker CLI，以上命令尚未在本机验证。
+- 当前环境已验证 MinIO 容器可启动，健康检查地址 `http://localhost:9000/minio/health/live` 返回 200。
 - 后端容器使用 `go-admin/config/settings.docker.yml`。
 - Docker 环境数据库名为 `go_admin_edu`。
+
+本地后端直连 Docker MinIO 时，`go-admin/config/settings.yml` 已配置：
+
+- `endpoint: 127.0.0.1:9000`
+- `publicEndpoint: http://localhost:9000`
+- `accessKeyID: minioadmin`
+- `accessKeySecret: minioadmin`
+- `bucketName: go-admin-edu`
 
 ## 9. 默认账号
 

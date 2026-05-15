@@ -48,6 +48,14 @@ settings:
   extend: # 扩展项使用说明
     demo:
       name: data
+    storage:
+      driver: minio
+      endpoint: 127.0.0.1:9000
+      publicEndpoint: http://localhost:9000
+      accessKeyID: minioadmin
+      accessKeySecret: minioadmin
+      bucketName: go-admin-edu
+      useSSL: false
   cache:
     #    redis:
     #      addr: 127.0.0.1:6379
