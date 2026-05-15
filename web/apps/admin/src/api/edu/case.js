@@ -26,6 +26,22 @@ export function getCaseAccessLogs(id, params) {
   return request({ url: `${url}/${id}/access-logs`, method: 'get', params });
 }
 
+export function getCaseAuthorizations(id, params) {
+  return request({ url: `${url}/${id}/authorizations`, method: 'get', params });
+}
+
+export function addCaseAuthorization(id, data) {
+  return request({ url: `${url}/${id}/authorizations`, method: 'post', data });
+}
+
+export function updateCaseAuthorization(id, authorizationId, data) {
+  return request({ url: `${url}/${id}/authorizations/${authorizationId}`, method: 'put', data });
+}
+
+export function removeCaseAuthorizations(id, data) {
+  return request({ url: `${url}/${id}/authorizations`, method: 'delete', data });
+}
+
 export function addCaseIep(id, data) {
   return request({ url: `${url}/${id}/ieps`, method: 'post', data });
 }

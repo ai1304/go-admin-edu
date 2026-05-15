@@ -30,6 +30,13 @@ type caseAccessLogQuery struct {
 	Keyword string `form:"keyword"`
 }
 
+type caseAuthorizationQuery struct {
+	dto.Pagination
+	UserId int    `form:"userId"`
+	Scope  string `form:"scope"`
+	Status string `form:"status"`
+}
+
 func (e EduCase) writeAccessLog(c *gin.Context, caseId int, action string) {
 	log := models.EduCaseAccessLog{
 		CaseId:    caseId,
@@ -246,6 +253,97 @@ func (e EduCase) GetAccessLogs(c *gin.Context) {
 		return
 	}
 	e.PageOK(list, int(count), req.GetPageIndex(), req.GetPageSize(), "查询成功")
+}
+
+func (e EduCase) GetAuthorizations(c *gin.Context) {
+	req := caseAuthorizationQuery{}
+	if err := e.MakeContext(c).MakeOrm().Errors; err != nil {
+		e.Error(500, err, err.Error())
+		return
+	}
+	_ = c.ShouldBindQuery(&req)
+	list := make([]models.EduCaseAuthorization, 0)
+	db := e.Orm.Model(&models.EduCaseAuthorization{}).Where("case_id = ?", c.Param("id"))
+	if req.UserId != 0 {
+		db = db.Where("user_id = ?", req.UserId)
+	}
+	if req.Scope != "" {
+		db = db.Where("scope = ?", req.Scope)
+	}
+	if req.Status != "" {
+		db = db.Where("status = ?", req.Status)
+	}
+	var count int64
+	if err := db.Count(&count).Error; err != nil {
+		e.Error(500, err, "查询失败")
+		return
+	}
+	if err := db.Order("id desc").Limit(req.GetPageSize()).Offset((req.GetPageIndex() - 1) * req.GetPageSize()).Find(&list).Error; err != nil {
+		e.Error(500, err, "查询失败")
+		return
+	}
+	e.PageOK(list, int(count), req.GetPageIndex(), req.GetPageSize(), "查询成功")
+}
+
+func (e EduCase) AddAuthorization(c *gin.Context) {
+	req := models.EduCaseAuthorization{}
+	if err := e.MakeContext(c).MakeOrm().Bind(&req, binding.JSON).Errors; err != nil {
+		e.Error(500, err, err.Error())
+		return
+	}
+	req.CaseId = parsePathId(c.Param("id"))
+	req.SetCreateBy(user.GetUserId(c))
+	if req.Scope == "" {
+		req.Scope = "view"
+	}
+	if req.Status == "" {
+		req.Status = "active"
+	}
+	if err := e.Orm.Create(&req).Error; err != nil {
+		e.Error(500, err, "创建授权失败")
+		return
+	}
+	e.OK(req.Id, "创建成功")
+}
+
+func (e EduCase) UpdateAuthorization(c *gin.Context) {
+	req := models.EduCaseAuthorization{}
+	if err := e.MakeContext(c).MakeOrm().Bind(&req, binding.JSON).Errors; err != nil {
+		e.Error(500, err, err.Error())
+		return
+	}
+	req.SetUpdateBy(user.GetUserId(c))
+	updates := map[string]interface{}{
+		"user_id":   req.UserId,
+		"scope":     req.Scope,
+		"start_at":  req.StartAt,
+		"end_at":    req.EndAt,
+		"status":    req.Status,
+		"remark":    req.Remark,
+		"update_by": req.UpdateBy,
+	}
+	if err := e.Orm.Model(&models.EduCaseAuthorization{}).
+		Where("id = ? and case_id = ?", c.Param("authorizationId"), c.Param("id")).
+		Updates(updates).Error; err != nil {
+		e.Error(500, err, "更新授权失败")
+		return
+	}
+	e.OK(c.Param("authorizationId"), "更新成功")
+}
+
+func (e EduCase) DeleteAuthorizations(c *gin.Context) {
+	req := struct {
+		Ids []int `json:"ids"`
+	}{}
+	if err := e.MakeContext(c).MakeOrm().Bind(&req, binding.JSON).Errors; err != nil {
+		e.Error(500, err, err.Error())
+		return
+	}
+	if err := e.Orm.Where("case_id = ?", c.Param("id")).Delete(&models.EduCaseAuthorization{}, req.Ids).Error; err != nil {
+		e.Error(500, err, "删除授权失败")
+		return
+	}
+	e.OK(req.Ids, "删除成功")
 }
 
 func (e EduCase) AddIEP(c *gin.Context) {

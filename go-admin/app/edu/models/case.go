@@ -70,3 +70,18 @@ type EduCaseAccessLog struct {
 func (*EduCaseAccessLog) TableName() string {
 	return "edu_case_access_log"
 }
+
+type EduCaseAuthorization struct {
+	BaseModel
+	CaseId  int    `json:"caseId" gorm:"index;comment:案例ID"`
+	UserId  int    `json:"userId" gorm:"index;comment:授权用户ID"`
+	Scope   string `json:"scope" gorm:"size:64;default:view;comment:授权范围"`
+	StartAt string `json:"startAt" gorm:"size:32;comment:生效时间"`
+	EndAt   string `json:"endAt" gorm:"size:32;comment:失效时间"`
+	Status  string `json:"status" gorm:"size:32;default:active;index;comment:状态"`
+	Remark  string `json:"remark" gorm:"size:512;comment:备注"`
+}
+
+func (*EduCaseAuthorization) TableName() string {
+	return "edu_case_authorization"
+}

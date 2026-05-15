@@ -142,6 +142,50 @@
             </a-table>
           </a-space>
         </a-tab-pane>
+        <a-tab-pane key="authorizations" title="访问授权">
+          <a-space direction="vertical" fill>
+            <a-form :model="authorizationQuery" layout="inline">
+              <a-form-item label="用户ID">
+                <a-input-number v-model="authorizationQuery.userId" allow-clear placeholder="用户 ID" style="width: 140px" />
+              </a-form-item>
+              <a-form-item label="范围">
+                <a-select v-model="authorizationQuery.scope" allow-clear placeholder="授权范围" style="width: 150px">
+                  <a-option v-for="item in authorizationScopeOptions" :key="item.value" :value="item.value">{{ item.label }}</a-option>
+                </a-select>
+              </a-form-item>
+              <a-form-item label="状态">
+                <a-select v-model="authorizationQuery.status" allow-clear placeholder="状态" style="width: 140px">
+                  <a-option v-for="item in authorizationStatusOptions" :key="item.value" :value="item.value">{{ item.label }}</a-option>
+                </a-select>
+              </a-form-item>
+              <a-form-item>
+                <a-space>
+                  <a-button type="primary" @click="searchAuthorizations">查询</a-button>
+                  <a-button @click="resetAuthorizationQuery">重置</a-button>
+                  <a-button type="primary" status="success" @click="openAuthorizationCreate">新增授权</a-button>
+                </a-space>
+              </a-form-item>
+            </a-form>
+            <a-table
+              :columns="authorizationColumns"
+              :data="authorizationList"
+              :pagination="authorizationPagination"
+              row-key="id"
+              @page-change="handleAuthorizationPageChange"
+            >
+              <template #scope="{ record }">{{ authorizationScopeText[record.scope] || record.scope }}</template>
+              <template #status="{ record }">
+                <a-tag :color="authorizationStatusColor[record.status]">{{ authorizationStatusText[record.status] || record.status }}</a-tag>
+              </template>
+              <template #operations="{ record }">
+                <a-space>
+                  <a-button type="text" size="small" @click="openAuthorizationEdit(record)">编辑</a-button>
+                  <a-button type="text" status="danger" size="small" @click="handleAuthorizationDelete(record)">删除</a-button>
+                </a-space>
+              </template>
+            </a-table>
+          </a-space>
+        </a-tab-pane>
         <a-tab-pane key="accessLogs" title="访问日志">
           <a-space direction="vertical" fill>
             <a-form :model="accessLogQuery" layout="inline">
@@ -247,6 +291,52 @@
         </a-form-item>
       </a-form>
     </a-modal>
+
+    <a-modal
+      v-model:visible="authorizationVisible"
+      :title="authorizationModel.id ? '编辑访问授权' : '新增访问授权'"
+      width="680px"
+      @before-ok="handleAuthorizationSave"
+    >
+      <a-form :model="authorizationModel" layout="vertical">
+        <a-row :gutter="16">
+          <a-col :span="12">
+            <a-form-item field="userId" label="授权用户 ID" required>
+              <a-input-number v-model="authorizationModel.userId" placeholder="请输入用户 ID" style="width: 100%" />
+            </a-form-item>
+          </a-col>
+          <a-col :span="12">
+            <a-form-item field="scope" label="授权范围">
+              <a-select v-model="authorizationModel.scope">
+                <a-option v-for="item in authorizationScopeOptions" :key="item.value" :value="item.value">{{ item.label }}</a-option>
+              </a-select>
+            </a-form-item>
+          </a-col>
+          <a-col :span="12">
+            <a-form-item field="startAt" label="生效时间">
+              <a-input v-model="authorizationModel.startAt" placeholder="例如 2026-05-15" />
+            </a-form-item>
+          </a-col>
+          <a-col :span="12">
+            <a-form-item field="endAt" label="失效时间">
+              <a-input v-model="authorizationModel.endAt" placeholder="例如 2026-06-15" />
+            </a-form-item>
+          </a-col>
+          <a-col :span="12">
+            <a-form-item field="status" label="状态">
+              <a-select v-model="authorizationModel.status">
+                <a-option v-for="item in authorizationStatusOptions" :key="item.value" :value="item.value">{{ item.label }}</a-option>
+              </a-select>
+            </a-form-item>
+          </a-col>
+          <a-col :span="24">
+            <a-form-item field="remark" label="备注">
+              <a-textarea v-model="authorizationModel.remark" :auto-size="{ minRows: 3, maxRows: 5 }" placeholder="请输入授权说明" />
+            </a-form-item>
+          </a-col>
+        </a-row>
+      </a-form>
+    </a-modal>
   </div>
 </template>
 
@@ -256,19 +346,23 @@ import { onMounted, reactive, ref } from 'vue';
 import {
   addCase,
   addCaseAssessment,
+  addCaseAuthorization,
   addCaseIep,
   addCaseIntervention,
   getCaseAccessLogs,
   getCaseAssessments,
+  getCaseAuthorizations,
   getCaseIeps,
   getCaseInterventions,
   getCases,
   removeCaseAssessments,
+  removeCaseAuthorizations,
   removeCaseIeps,
   removeCaseInterventions,
   removeCases,
   updateCase,
   updateCaseAssessment,
+  updateCaseAuthorization,
   updateCaseIep,
   updateCaseIntervention
 } from '@/api/edu/case';
@@ -302,15 +396,18 @@ const manageVisible = ref(false);
 const iepVisible = ref(false);
 const assessmentVisible = ref(false);
 const interventionVisible = ref(false);
+const authorizationVisible = ref(false);
 const manageDesensitize = ref(false);
 const currentCase = ref(null);
 const formModel = reactive(defaultForm());
 const iepModel = reactive(defaultIepForm());
 const assessmentModel = reactive(defaultAssessmentForm());
 const interventionModel = reactive(defaultInterventionForm());
+const authorizationModel = reactive(defaultAuthorizationForm());
 const iepList = ref([]);
 const assessmentList = ref([]);
 const interventionList = ref([]);
+const authorizationList = ref([]);
 const accessLogList = ref([]);
 const accessActionText = {
   view_detail: '查看详情',
@@ -321,6 +418,21 @@ const accessActionText = {
 const accessActionOptions = Object.entries(accessActionText).map(([value, label]) => ({ value, label }));
 const accessLogQuery = reactive({ action: '', userId: undefined, keyword: '', pageIndex: 1, pageSize: 10 });
 const accessLogPagination = reactive({ current: 1, pageSize: 10, total: 0 });
+const authorizationScopeOptions = [
+  { label: '仅查看', value: 'view' },
+  { label: '可编辑', value: 'edit' },
+  { label: '可审核', value: 'review' }
+];
+const authorizationStatusOptions = [
+  { label: '有效', value: 'active' },
+  { label: '停用', value: 'disabled' },
+  { label: '过期', value: 'expired' }
+];
+const authorizationScopeText = Object.fromEntries(authorizationScopeOptions.map((item) => [item.value, item.label]));
+const authorizationStatusText = Object.fromEntries(authorizationStatusOptions.map((item) => [item.value, item.label]));
+const authorizationStatusColor = { active: 'green', disabled: 'gray', expired: 'orange' };
+const authorizationQuery = reactive({ userId: undefined, scope: '', status: '', pageIndex: 1, pageSize: 10 });
+const authorizationPagination = reactive({ current: 1, pageSize: 10, total: 0 });
 
 const columns = [
   { title: '案例名称', dataIndex: 'title', ellipsis: true, tooltip: true },
@@ -346,6 +458,15 @@ const interventionColumns = [
   { title: '开始日期', dataIndex: 'startDate', width: 120 },
   { title: '结束日期', dataIndex: 'endDate', width: 120 },
   { title: '状态', slotName: 'status', width: 100 },
+  { title: '操作', slotName: 'operations', width: 150 }
+];
+const authorizationColumns = [
+  { title: '用户 ID', dataIndex: 'userId', width: 100 },
+  { title: '范围', slotName: 'scope', width: 100 },
+  { title: '生效时间', dataIndex: 'startAt', width: 120 },
+  { title: '失效时间', dataIndex: 'endAt', width: 120 },
+  { title: '状态', slotName: 'status', width: 100 },
+  { title: '备注', dataIndex: 'remark', ellipsis: true, tooltip: true },
   { title: '操作', slotName: 'operations', width: 150 }
 ];
 const accessLogColumns = [
@@ -381,6 +502,10 @@ function defaultAssessmentForm() {
 
 function defaultInterventionForm() {
   return { id: undefined, title: '', content: '', startDate: '', endDate: '', status: 'active' };
+}
+
+function defaultAuthorizationForm() {
+  return { id: undefined, userId: undefined, scope: 'view', startAt: '', endAt: '', status: 'active', remark: '' };
 }
 
 function assignForm(data = {}) {
@@ -451,6 +576,7 @@ async function openManage(record) {
   currentCase.value = record;
   manageDesensitize.value = false;
   resetAccessLogQuery(false);
+  resetAuthorizationQuery(false);
   manageVisible.value = true;
   await fetchManageData();
 }
@@ -458,15 +584,17 @@ async function openManage(record) {
 async function fetchManageData() {
   if (!currentCase.value?.id) return;
   const sensitiveParams = { desensitize: manageDesensitize.value };
-  const [iepsRes, assessmentsRes, interventionsRes, accessLogsRes] = await Promise.all([
+  const [iepsRes, assessmentsRes, interventionsRes, authorizationsRes, accessLogsRes] = await Promise.all([
     getCaseIeps(currentCase.value.id, sensitiveParams),
     getCaseAssessments(currentCase.value.id, sensitiveParams),
     getCaseInterventions(currentCase.value.id, sensitiveParams),
+    getCaseAuthorizations(currentCase.value.id, authorizationQuery),
     getCaseAccessLogs(currentCase.value.id, accessLogQuery)
   ]);
   iepList.value = iepsRes.data || [];
   assessmentList.value = assessmentsRes.data || [];
   interventionList.value = interventionsRes.data || [];
+  setAuthorizations(authorizationsRes);
   setAccessLogs(accessLogsRes);
 }
 
@@ -504,6 +632,80 @@ function resetAccessLogQuery(shouldFetch = true) {
   if (shouldFetch) {
     fetchAccessLogs();
   }
+}
+
+async function fetchAuthorizations() {
+  if (!currentCase.value?.id) return;
+  const res = await getCaseAuthorizations(currentCase.value.id, authorizationQuery);
+  setAuthorizations(res);
+}
+
+function searchAuthorizations() {
+  authorizationQuery.pageIndex = 1;
+  authorizationPagination.current = 1;
+  fetchAuthorizations();
+}
+
+function setAuthorizations(res) {
+  const payload = res.data || {};
+  authorizationList.value = payload.list || payload || [];
+  authorizationPagination.total = payload.count || res.total || 0;
+  authorizationPagination.current = authorizationQuery.pageIndex;
+}
+
+function handleAuthorizationPageChange(page) {
+  authorizationQuery.pageIndex = page;
+  authorizationPagination.current = page;
+  fetchAuthorizations();
+}
+
+function resetAuthorizationQuery(shouldFetch = true) {
+  authorizationQuery.userId = undefined;
+  authorizationQuery.scope = '';
+  authorizationQuery.status = '';
+  authorizationQuery.pageIndex = 1;
+  authorizationPagination.current = 1;
+  if (shouldFetch) {
+    fetchAuthorizations();
+  }
+}
+
+function openAuthorizationCreate() {
+  Object.assign(authorizationModel, defaultAuthorizationForm());
+  authorizationVisible.value = true;
+}
+
+function openAuthorizationEdit(record) {
+  Object.assign(authorizationModel, defaultAuthorizationForm(), record);
+  authorizationVisible.value = true;
+}
+
+async function handleAuthorizationSave() {
+  if (!authorizationModel.userId) {
+    Message.warning('请输入授权用户 ID');
+    return false;
+  }
+  const payload = { ...authorizationModel };
+  if (payload.id) {
+    await updateCaseAuthorization(currentCase.value.id, payload.id, payload);
+  } else {
+    await addCaseAuthorization(currentCase.value.id, payload);
+  }
+  Message.success('保存成功');
+  authorizationVisible.value = false;
+  fetchAuthorizations();
+}
+
+function handleAuthorizationDelete(record) {
+  Modal.confirm({
+    title: '确认删除访问授权',
+    content: `确定删除用户 ${record.userId} 的访问授权吗？`,
+    async onOk() {
+      await removeCaseAuthorizations(currentCase.value.id, { ids: [record.id] });
+      Message.success('删除成功');
+      fetchAuthorizations();
+    }
+  });
 }
 
 function openIepCreate() {
@@ -626,5 +828,9 @@ onMounted(fetchData);
 <style scoped>
 .table-card {
   margin-top: 16px;
+}
+
+.manage-toolbar {
+  margin-bottom: 12px;
 }
 </style>
