@@ -59,9 +59,10 @@ services:
     volumes:
       - ./artifacts/api/go-admin:/main:ro
       - ../go-admin/config/settings.docker.yml:/config/settings.yml:ro
+      - ../go-admin/config:/app/config:ro
       - api-static:/app/static
       - api-temp:/app/temp
-    command: ["/main", "server", "-c", "/config/settings.yml"]
+    command: ["sh", "-c", "mkdir -p temp/logs && /main server -c /config/settings.yml"]
 
   admin-web:
     image: docker.1ms.run/library/nginx:1.27-alpine
