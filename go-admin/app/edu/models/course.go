@@ -48,11 +48,12 @@ func (*EduCourseLesson) TableName() string {
 
 type EduLearningRecord struct {
 	BaseModel
-	CourseId int    `json:"courseId" gorm:"index;comment:课程ID"`
-	LessonId int    `json:"lessonId" gorm:"index;comment:课时ID"`
-	UserId   int    `json:"userId" gorm:"index;comment:学习用户ID"`
-	Progress int    `json:"progress" gorm:"default:0;comment:进度百分比"`
-	Status   string `json:"status" gorm:"size:32;default:learning;comment:学习状态"`
+	CourseId  int    `json:"courseId" gorm:"index;comment:课程ID"`
+	LessonId  int    `json:"lessonId" gorm:"index;comment:课时ID"`
+	UserId    int    `json:"userId" gorm:"index;comment:学习用户ID"`
+	ClientKey string `json:"clientKey" gorm:"size:128;index;comment:客户端标识"`
+	Progress  int    `json:"progress" gorm:"default:0;comment:进度百分比"`
+	Status    string `json:"status" gorm:"size:32;default:learning;comment:学习状态"`
 }
 
 func (*EduLearningRecord) TableName() string {
@@ -76,6 +77,8 @@ type EduAssignmentSubmission struct {
 	AssignmentId int    `json:"assignmentId" gorm:"index;comment:作业ID"`
 	CourseId     int    `json:"courseId" gorm:"index;comment:课程ID"`
 	UserId       int    `json:"userId" gorm:"index;comment:提交用户ID"`
+	ClientKey    string `json:"clientKey" gorm:"size:128;index;comment:客户端标识"`
+	Nickname     string `json:"nickname" gorm:"size:128;comment:昵称"`
 	Content      string `json:"content" gorm:"type:text;comment:提交内容"`
 	FileId       int    `json:"fileId" gorm:"index;comment:附件文件ID"`
 	Score        int    `json:"score" gorm:"comment:分数"`

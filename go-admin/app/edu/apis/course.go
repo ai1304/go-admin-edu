@@ -8,6 +8,7 @@ import (
 	"github.com/gin-gonic/gin/binding"
 	"github.com/go-admin-team/go-admin-core/sdk/api"
 	"github.com/go-admin-team/go-admin-core/sdk/pkg/jwtauth/user"
+	"gorm.io/gorm"
 )
 
 type EduCourse struct {
@@ -21,6 +22,26 @@ type courseQuery struct {
 	SchoolId         int    `form:"schoolId"`
 	StageCategoryId  int    `form:"stageCategoryId"`
 	DisabilityTypeId int    `form:"disabilityTypeId"`
+}
+
+type publicCourseIdentityReq struct {
+	UserId    int    `form:"userId" json:"userId"`
+	ClientKey string `form:"clientKey" json:"clientKey"`
+}
+
+type publicLearningReq struct {
+	UserId    int    `json:"userId"`
+	ClientKey string `json:"clientKey"`
+	Progress  int    `json:"progress"`
+	Status    string `json:"status"`
+}
+
+type publicAssignmentSubmissionReq struct {
+	UserId    int    `json:"userId"`
+	ClientKey string `json:"clientKey"`
+	Nickname  string `json:"nickname"`
+	Content   string `json:"content"`
+	FileId    int    `json:"fileId"`
 }
 
 func (e EduCourse) GetPage(c *gin.Context) {
@@ -120,9 +141,13 @@ func (e EduCourse) PublicGet(c *gin.Context) {
 	}
 	chapters := make([]models.EduCourseChapter, 0)
 	lessons := make([]models.EduCourseLesson, 0)
+	assignments := make([]models.EduAssignment, 0)
 	_ = e.Orm.Where("course_id = ? and status = ?", data.Id, 1).Order("sort asc,id asc").Find(&chapters).Error
 	_ = e.Orm.Where("course_id = ? and status = ?", data.Id, 1).Order("sort asc,id asc").Find(&lessons).Error
-	e.OK(gin.H{"course": data, "chapters": chapters, "lessons": lessons}, "查询成功")
+	_ = e.Orm.Where("course_id = ? and status = ?", data.Id, 1).Order("id desc").Find(&assignments).Error
+	_ = e.Orm.Model(&models.EduCourse{}).Where("id = ?", data.Id).UpdateColumn("view_count", gorm.Expr("view_count + ?", 1)).Error
+	data.ViewCount++
+	e.OK(gin.H{"course": data, "chapters": chapters, "lessons": lessons, "assignments": assignments}, "查询成功")
 }
 
 func (e EduCourse) Insert(c *gin.Context) {
@@ -169,6 +194,182 @@ func (e EduCourse) Delete(c *gin.Context) {
 		return
 	}
 	e.OK(req.Ids, "删除成功")
+}
+
+func (e EduCourse) PublicGetAssignments(c *gin.Context) {
+	if err := e.MakeContext(c).MakeOrm().Errors; err != nil {
+		e.Error(500, err, err.Error())
+		return
+	}
+	courseId := parsePathId(c.Param("id"))
+	var course models.EduCourse
+	if err := e.Orm.Where("id = ? and status = ?", courseId, "published").First(&course).Error; err != nil {
+		e.Error(404, err, "课程不存在")
+		return
+	}
+	list := make([]models.EduAssignment, 0)
+	if err := e.Orm.Where("course_id = ? and status = ?", courseId, 1).Order("id desc").Find(&list).Error; err != nil {
+		e.Error(500, err, "查询失败")
+		return
+	}
+	e.OK(list, "查询成功")
+}
+
+func (e EduCourse) PublicGetLearningRecords(c *gin.Context) {
+	req := publicCourseIdentityReq{}
+	if err := e.MakeContext(c).MakeOrm().Errors; err != nil {
+		e.Error(500, err, err.Error())
+		return
+	}
+	_ = c.ShouldBindQuery(&req)
+	if req.UserId == 0 && req.ClientKey == "" {
+		e.OK([]models.EduLearningRecord{}, "查询成功")
+		return
+	}
+	list := make([]models.EduLearningRecord, 0)
+	db := e.Orm.Where("course_id = ?", c.Param("id"))
+	if req.UserId != 0 {
+		db = db.Where("user_id = ?", req.UserId)
+	} else {
+		db = db.Where("client_key = ?", req.ClientKey)
+	}
+	if err := db.Order("id desc").Find(&list).Error; err != nil {
+		e.Error(500, err, "查询失败")
+		return
+	}
+	e.OK(list, "查询成功")
+}
+
+func (e EduCourse) PublicTrackLearning(c *gin.Context) {
+	req := publicLearningReq{}
+	if err := e.MakeContext(c).MakeOrm().Bind(&req, binding.JSON).Errors; err != nil {
+		e.Error(500, err, err.Error())
+		return
+	}
+	courseId := parsePathId(c.Param("id"))
+	lessonId := parsePathId(c.Param("lessonId"))
+	if req.UserId == 0 && req.ClientKey == "" {
+		e.Error(400, nil, "缺少学习标识")
+		return
+	}
+	if req.Progress < 0 {
+		req.Progress = 0
+	}
+	if req.Progress > 100 {
+		req.Progress = 100
+	}
+	if req.Status == "" {
+		req.Status = "learning"
+	}
+	if req.Progress >= 100 {
+		req.Status = "finished"
+	}
+	var course models.EduCourse
+	if err := e.Orm.Where("id = ? and status = ?", courseId, "published").First(&course).Error; err != nil {
+		e.Error(404, err, "课程不存在")
+		return
+	}
+	var lesson models.EduCourseLesson
+	if err := e.Orm.Where("id = ? and course_id = ? and status = ?", lessonId, courseId, 1).First(&lesson).Error; err != nil {
+		e.Error(404, err, "课时不存在")
+		return
+	}
+	identity := e.Orm.Model(&models.EduLearningRecord{}).Where("course_id = ?", courseId)
+	if req.UserId != 0 {
+		identity = identity.Where("user_id = ?", req.UserId)
+	} else {
+		identity = identity.Where("client_key = ?", req.ClientKey)
+	}
+	var identityCount int64
+	_ = identity.Count(&identityCount).Error
+
+	var record models.EduLearningRecord
+	db := e.Orm.Where("course_id = ? and lesson_id = ?", courseId, lessonId)
+	if req.UserId != 0 {
+		db = db.Where("user_id = ?", req.UserId)
+	} else {
+		db = db.Where("client_key = ?", req.ClientKey)
+	}
+	err := db.First(&record).Error
+	if err == nil {
+		if err := e.Orm.Model(&record).Updates(map[string]interface{}{
+			"progress": req.Progress,
+			"status":   req.Status,
+		}).Error; err != nil {
+			e.Error(500, err, "记录学习失败")
+			return
+		}
+		record.Progress = req.Progress
+		record.Status = req.Status
+		e.OK(record, "记录成功")
+		return
+	}
+	if err != gorm.ErrRecordNotFound {
+		e.Error(500, err, "记录学习失败")
+		return
+	}
+	record = models.EduLearningRecord{
+		CourseId:  courseId,
+		LessonId:  lessonId,
+		UserId:    req.UserId,
+		ClientKey: req.ClientKey,
+		Progress:  req.Progress,
+		Status:    req.Status,
+	}
+	if err := e.Orm.Create(&record).Error; err != nil {
+		e.Error(500, err, "记录学习失败")
+		return
+	}
+	if identityCount == 0 {
+		_ = e.Orm.Model(&models.EduCourse{}).Where("id = ?", courseId).UpdateColumn("learner_count", gorm.Expr("learner_count + ?", 1)).Error
+	}
+	e.OK(record, "记录成功")
+}
+
+func (e EduCourse) PublicSubmitAssignment(c *gin.Context) {
+	req := publicAssignmentSubmissionReq{}
+	if err := e.MakeContext(c).MakeOrm().Bind(&req, binding.JSON).Errors; err != nil {
+		e.Error(500, err, err.Error())
+		return
+	}
+	courseId := parsePathId(c.Param("id"))
+	assignmentId := parsePathId(c.Param("assignmentId"))
+	if req.UserId == 0 && req.ClientKey == "" {
+		e.Error(400, nil, "缺少提交标识")
+		return
+	}
+	if req.Content == "" && req.FileId == 0 {
+		e.Error(400, nil, "提交内容不能为空")
+		return
+	}
+	var course models.EduCourse
+	if err := e.Orm.Where("id = ? and status = ?", courseId, "published").First(&course).Error; err != nil {
+		e.Error(404, err, "课程不存在")
+		return
+	}
+	var assignment models.EduAssignment
+	if err := e.Orm.Where("id = ? and course_id = ? and status = ?", assignmentId, courseId, 1).First(&assignment).Error; err != nil {
+		e.Error(404, err, "作业不存在")
+		return
+	}
+	if req.Nickname == "" {
+		req.Nickname = "学习者"
+	}
+	submission := models.EduAssignmentSubmission{
+		CourseId:     courseId,
+		AssignmentId: assignmentId,
+		UserId:       req.UserId,
+		ClientKey:    req.ClientKey,
+		Nickname:     req.Nickname,
+		Content:      req.Content,
+		FileId:       req.FileId,
+		Status:       "submitted",
+	}
+	if err := e.Orm.Create(&submission).Error; err != nil {
+		e.Error(500, err, "提交失败")
+		return
+	}
+	e.OK(submission, "提交成功")
 }
 
 func (e EduCourse) GetChapters(c *gin.Context) {

@@ -18,6 +18,10 @@ func registerPublicCourseRouter(v1 *gin.RouterGroup) {
 	r := v1.Group("/portal/courses")
 	{
 		r.GET("", api.PublicGetPage)
+		r.GET("/:id/assignments", api.PublicGetAssignments)
+		r.GET("/:id/learning-records", api.PublicGetLearningRecords)
+		r.POST("/:id/lessons/:lessonId/learning-records", api.PublicTrackLearning)
+		r.POST("/:id/assignments/:assignmentId/submissions", api.PublicSubmitAssignment)
 		r.GET("/:id", api.PublicGet)
 	}
 }
