@@ -44,8 +44,7 @@ services:
       - minio-data:/data
 
   api:
-    build:
-      context: ./artifacts/api
+    image: docker.1ms.run/library/alpine:3.21
     container_name: go-admin-edu-api
     restart: unless-stopped
     depends_on:
@@ -58,6 +57,7 @@ services:
     ports:
       - "8000:8000"
     volumes:
+      - ./artifacts/api/go-admin:/main:ro
       - ../go-admin/config/settings.docker.yml:/config/settings.yml:ro
       - api-static:/app/static
       - api-temp:/app/temp
