@@ -1,7 +1,7 @@
 FROM docker.1ms.run/library/golang:1.24-alpine AS build
 WORKDIR /src
 RUN apk add --no-cache gcc g++ musl-dev
-COPY go.mod go.sum ./
+COPY go.mod ./
 RUN go mod download
 COPY . .
 RUN go build -o /out/go-admin .
