@@ -1,6 +1,7 @@
 FROM docker.1ms.run/library/node:22-alpine AS build-stage
 WORKDIR /app
 RUN corepack enable
+RUN pnpm config set registry https://registry.npmmirror.com
 COPY package.json pnpm-lock.yaml ./
 RUN pnpm install --frozen-lockfile
 COPY . .

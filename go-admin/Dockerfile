@@ -1,5 +1,6 @@
 FROM docker.1ms.run/library/golang:1.24-alpine AS build
 WORKDIR /src
+ENV GOPROXY=https://goproxy.cn,direct
 RUN apk add --no-cache gcc g++ musl-dev
 COPY go.mod ./
 RUN go mod download
