@@ -50,7 +50,7 @@ settings:
       name: data
     storage:
       driver: minio
-      endpoint: 127.0.0.1:9000
+      endpoint: localhost:9000
       publicEndpoint: http://localhost:9000
       accessKeyID: minioadmin
       accessKeySecret: minioadmin

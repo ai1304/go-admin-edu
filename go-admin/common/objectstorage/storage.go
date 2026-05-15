@@ -57,26 +57,31 @@ func New(cfg Config) (ObjectStorage, error) {
 }
 
 type MinIOStorage struct {
-	client         *minio.Client
-	bucketName     string
-	publicEndpoint string
+	client          *minio.Client
+	presignedClient *minio.Client
+	bucketName      string
 }
 
 func NewMinIO(cfg Config) (*MinIOStorage, error) {
 	if cfg.Endpoint == "" || cfg.AccessKeyID == "" || cfg.AccessKeySecret == "" || cfg.BucketName == "" {
 		return nil, errors.New("minio storage config is incomplete")
 	}
-	client, err := minio.New(normalizeEndpoint(cfg.Endpoint), &minio.Options{
-		Creds:  credentials.NewStaticV4(cfg.AccessKeyID, cfg.AccessKeySecret, ""),
-		Secure: cfg.UseSSL,
-	})
+	client, err := newMinIOClient(cfg.Endpoint, cfg.AccessKeyID, cfg.AccessKeySecret, cfg.UseSSL)
 	if err != nil {
 		return nil, err
 	}
+	presignedClient := client
+	if cfg.PublicEndpoint != "" {
+		publicClient, err := newMinIOClient(cfg.PublicEndpoint, cfg.AccessKeyID, cfg.AccessKeySecret, cfg.UseSSL)
+		if err != nil {
+			return nil, err
+		}
+		presignedClient = publicClient
+	}
 	return &MinIOStorage{
-		client:         client,
-		bucketName:     cfg.BucketName,
-		publicEndpoint: cfg.PublicEndpoint,
+		client:          client,
+		presignedClient: presignedClient,
+		bucketName:      cfg.BucketName,
 	}, nil
 }
 
@@ -103,19 +108,10 @@ func (s *MinIOStorage) PutObject(ctx context.Context, objectKey string, reader i
 }
 
 func (s *MinIOStorage) PresignedGetObject(ctx context.Context, objectKey string, expires time.Duration) (string, error) {
-	u, err := s.client.PresignedGetObject(ctx, s.bucketName, objectKey, expires, nil)
+	u, err := s.presignedClient.PresignedGetObject(ctx, s.bucketName, objectKey, expires, nil)
 	if err != nil {
 		return "", err
 	}
-	if s.publicEndpoint == "" {
-		return u.String(), nil
-	}
-	publicURL, err := url.Parse(s.publicEndpoint)
-	if err != nil {
-		return "", err
-	}
-	u.Scheme = publicURL.Scheme
-	u.Host = publicURL.Host
 	return u.String(), nil
 }
 
@@ -127,4 +123,16 @@ func normalizeEndpoint(endpoint string) string {
 	endpoint = strings.TrimPrefix(endpoint, "http://")
 	endpoint = strings.TrimPrefix(endpoint, "https://")
 	return strings.TrimRight(endpoint, "/")
+}
+
+func newMinIOClient(endpoint, accessKeyID, accessKeySecret string, useSSL bool) (*minio.Client, error) {
+	secure := useSSL
+	parsedURL, err := url.Parse(endpoint)
+	if err == nil && parsedURL.Scheme != "" {
+		secure = parsedURL.Scheme == "https"
+	}
+	return minio.New(normalizeEndpoint(endpoint), &minio.Options{
+		Creds:  credentials.NewStaticV4(accessKeyID, accessKeySecret, ""),
+		Secure: secure,
+	})
 }

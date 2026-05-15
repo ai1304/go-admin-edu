@@ -271,11 +271,13 @@ docker compose up -d api admin-web portal-web
 
 本地后端直连 Docker MinIO 时，`go-admin/config/settings.yml` 已配置：
 
-- `endpoint: 127.0.0.1:9000`
+- `endpoint: localhost:9000`
 - `publicEndpoint: http://localhost:9000`
 - `accessKeyID: minioadmin`
 - `accessKeySecret: minioadmin`
 - `bucketName: go-admin-edu`
+
+注意：MinIO 预签名 URL 会把 Host 纳入签名计算。后端生成门户访问 URL 时会使用 `publicEndpoint` 重新签名，不能先用容器内地址签名后再替换成浏览器地址，否则门户访问图片/附件会出现 `SignatureDoesNotMatch`。
 
 ## 9. 默认账号
 
