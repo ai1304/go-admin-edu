@@ -20,6 +20,11 @@ func registerPublicResourceRouter(v1 *gin.RouterGroup) {
 	{
 		r.GET("", resourceApi.PublicGetPage)
 		r.GET("/:id/files/:fileId/access-url", fileApi.PublicAccessURL)
+		r.GET("/:id/favorite-state", resourceApi.PublicFavoriteState)
+		r.POST("/:id/favorite", resourceApi.PublicFavorite)
+		r.DELETE("/:id/favorite", resourceApi.PublicUnfavorite)
+		r.GET("/:id/comments", resourceApi.PublicGetComments)
+		r.POST("/:id/comments", resourceApi.PublicCreateComment)
 		r.GET("/:id", resourceApi.PublicGet)
 	}
 }

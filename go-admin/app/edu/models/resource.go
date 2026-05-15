@@ -29,3 +29,29 @@ type EduResource struct {
 func (*EduResource) TableName() string {
 	return "edu_resource"
 }
+
+type EduResourceFavorite struct {
+	BaseModel
+	ResourceId int    `json:"resourceId" gorm:"index;comment:资源ID"`
+	UserId     int    `json:"userId" gorm:"index;comment:用户ID"`
+	ClientKey  string `json:"clientKey" gorm:"size:128;index;comment:客户端标识"`
+}
+
+func (*EduResourceFavorite) TableName() string {
+	return "edu_resource_favorite"
+}
+
+type EduResourceComment struct {
+	BaseModel
+	ResourceId int    `json:"resourceId" gorm:"index;comment:资源ID"`
+	ParentId   int    `json:"parentId" gorm:"index;comment:父评论ID"`
+	UserId     int    `json:"userId" gorm:"index;comment:用户ID"`
+	Nickname   string `json:"nickname" gorm:"size:128;comment:昵称"`
+	Content    string `json:"content" gorm:"type:text;comment:评论内容"`
+	LikeCount  int64  `json:"likeCount" gorm:"default:0;comment:点赞数"`
+	Status     int    `json:"status" gorm:"default:1;index;comment:状态"`
+}
+
+func (*EduResourceComment) TableName() string {
+	return "edu_resource_comment"
+}

@@ -21,3 +21,42 @@ export function getResourceFileAccessUrl(resourceId, fileId) {
     method: "get"
   });
 }
+
+export function getResourceFavoriteState(resourceId, params) {
+  return request({
+    url: `/portal/resources/${resourceId}/favorite-state`,
+    method: "get",
+    params
+  });
+}
+
+export function favoriteResource(resourceId, data) {
+  return request({
+    url: `/portal/resources/${resourceId}/favorite`,
+    method: "post",
+    data
+  });
+}
+
+export function unfavoriteResource(resourceId, data) {
+  return request({
+    url: `/portal/resources/${resourceId}/favorite`,
+    method: "delete",
+    data
+  });
+}
+
+export function getResourceComments(resourceId) {
+  return request({
+    url: `/portal/resources/${resourceId}/comments`,
+    method: "get"
+  });
+}
+
+export function createResourceComment(resourceId, data) {
+  return request({
+    url: `/portal/resources/${resourceId}/comments`,
+    method: "post",
+    data
+  });
+}

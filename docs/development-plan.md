@@ -434,7 +434,7 @@
 
 - `main`
 - 远程仓库：`https://github.com/ai1304/go-admin-edu.git`
-- 最新业务提交：以 `git log -1 --oneline` 为准，本快照记录截至课程作业/提交/学习记录开发。
+- 最新业务提交：以 `git log -1 --oneline` 为准，本快照记录截至资源互动能力开发。
 
 当前阶段：
 
@@ -526,6 +526,9 @@
   - `GET/POST/DELETE /api/v1/edu/courses/:id/assignments/:assignmentId/submissions`，`PUT /api/v1/edu/courses/:id/assignments/:assignmentId/submissions/:submissionId`
   - `GET/POST/DELETE /api/v1/edu/courses/:id/learning-records`，`PUT /api/v1/edu/courses/:id/learning-records/:recordId`
 - 后台课程管理已在「章节/课时」弹窗内新增作业、作业提交、学习记录维护能力。
+- 后端新增资源互动模型与迁移：资源收藏、资源评论。
+- 后端门户资源详情已自动增加浏览量，附件访问地址接口已增加下载量。
+- 门户资源详情已新增收藏/取消收藏、评论发布和评论列表展示。
 - 后台资源管理已接入资源审核动作：提交审核、审核通过、审核驳回。
 - 后台资源管理已接入附件管理入口，可调用 `POST /api/v1/edu/resource-files/upload` 上传资源附件，并可删除附件记录。
 - 后台请求封装已兼容 `FormData`，避免文件上传请求被强制设置为 JSON。
@@ -562,9 +565,10 @@
 5. 扩展用户与数据权限：`tenant_id`、`region_id`、`school_id`、用户类型。
 6. 联调 MinIO 上传、资源创建、提交审核、审核发布、门户展示、附件下载全链路。
 7. 将资源标签从关键词文本升级为可多选标签并建立资源-标签关联表。
-8. 继续完善专家资源的文件预览/下载、收藏与分享能力。
-9. 完善课程门户学习页、作业提交入口和学习进度自动更新。
-10. 完善特教案例敏感数据权限、访问日志和脱敏输出能力。
+8. 完善资源评论后台审核、点赞和回复展示。
+9. 继续完善专家资源的文件预览/下载、收藏与分享能力。
+10. 完善课程门户学习页、作业提交入口和学习进度自动更新。
+11. 完善特教案例敏感数据权限、访问日志和脱敏输出能力。
 
 ## 9. 当前前端目录结构
 

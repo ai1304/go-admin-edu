@@ -8,6 +8,7 @@ import (
 	"github.com/gin-gonic/gin/binding"
 	"github.com/go-admin-team/go-admin-core/sdk/api"
 	"github.com/go-admin-team/go-admin-core/sdk/pkg/jwtauth/user"
+	"gorm.io/gorm"
 )
 
 type EduResource struct {
@@ -29,6 +30,18 @@ type resourceQuery struct {
 type resourceReviewReq struct {
 	Action  string `json:"action"`
 	Comment string `json:"comment"`
+}
+
+type resourceFavoriteReq struct {
+	UserId    int    `json:"userId" form:"userId"`
+	ClientKey string `json:"clientKey" form:"clientKey"`
+}
+
+type resourceCommentReq struct {
+	ParentId int    `json:"parentId"`
+	UserId   int    `json:"userId"`
+	Nickname string `json:"nickname"`
+	Content  string `json:"content"`
 }
 
 func (e EduResource) GetPage(c *gin.Context) {
@@ -115,6 +128,8 @@ func (e EduResource) Get(c *gin.Context) {
 	}
 	files := make([]models.EduResourceFile, 0)
 	_ = e.Orm.Where("resource_id = ?", data.Id).Find(&files).Error
+	_ = e.Orm.Model(&models.EduResource{}).Where("id = ?", data.Id).UpdateColumn("view_count", gorm.Expr("view_count + ?", 1)).Error
+	data.ViewCount++
 	e.OK(gin.H{"resource": data, "files": files}, "查询成功")
 }
 
@@ -233,4 +248,144 @@ func (e EduResource) Review(c *gin.Context) {
 	}
 	tx.Commit()
 	e.OK(resource.Id, "审核成功")
+}
+
+func (e EduResource) PublicFavoriteState(c *gin.Context) {
+	req := resourceFavoriteReq{}
+	if err := e.MakeContext(c).MakeOrm().Errors; err != nil {
+		e.Error(500, err, err.Error())
+		return
+	}
+	_ = c.ShouldBindQuery(&req)
+	if req.UserId == 0 && req.ClientKey == "" {
+		e.OK(gin.H{"favorited": false}, "查询成功")
+		return
+	}
+	var count int64
+	db := e.Orm.Model(&models.EduResourceFavorite{}).Where("resource_id = ?", c.Param("id"))
+	if req.UserId != 0 {
+		db = db.Where("user_id = ?", req.UserId)
+	} else {
+		db = db.Where("client_key = ?", req.ClientKey)
+	}
+	if err := db.Count(&count).Error; err != nil {
+		e.Error(500, err, "查询失败")
+		return
+	}
+	e.OK(gin.H{"favorited": count > 0}, "查询成功")
+}
+
+func (e EduResource) PublicFavorite(c *gin.Context) {
+	req := resourceFavoriteReq{}
+	if err := e.MakeContext(c).MakeOrm().Bind(&req, binding.JSON).Errors; err != nil {
+		e.Error(500, err, err.Error())
+		return
+	}
+	resourceId := parsePathId(c.Param("id"))
+	if req.UserId == 0 && req.ClientKey == "" {
+		e.Error(400, nil, "缺少收藏标识")
+		return
+	}
+	var resource models.EduResource
+	if err := e.Orm.Where("id = ? and status = ?", resourceId, models.ResourceStatusPublished).First(&resource).Error; err != nil {
+		e.Error(404, err, "资源不存在")
+		return
+	}
+	var count int64
+	db := e.Orm.Model(&models.EduResourceFavorite{}).Where("resource_id = ?", resourceId)
+	if req.UserId != 0 {
+		db = db.Where("user_id = ?", req.UserId)
+	} else {
+		db = db.Where("client_key = ?", req.ClientKey)
+	}
+	if err := db.Count(&count).Error; err != nil {
+		e.Error(500, err, "收藏失败")
+		return
+	}
+	if count > 0 {
+		e.OK(resourceId, "已收藏")
+		return
+	}
+	favorite := models.EduResourceFavorite{ResourceId: resourceId, UserId: req.UserId, ClientKey: req.ClientKey}
+	if err := e.Orm.Create(&favorite).Error; err != nil {
+		e.Error(500, err, "收藏失败")
+		return
+	}
+	_ = e.Orm.Model(&models.EduResource{}).Where("id = ?", resourceId).UpdateColumn("favorite_count", gorm.Expr("favorite_count + ?", 1)).Error
+	e.OK(resourceId, "收藏成功")
+}
+
+func (e EduResource) PublicUnfavorite(c *gin.Context) {
+	req := resourceFavoriteReq{}
+	if err := e.MakeContext(c).MakeOrm().Bind(&req, binding.JSON).Errors; err != nil {
+		e.Error(500, err, err.Error())
+		return
+	}
+	resourceId := parsePathId(c.Param("id"))
+	if req.UserId == 0 && req.ClientKey == "" {
+		e.Error(400, nil, "缺少收藏标识")
+		return
+	}
+	db := e.Orm.Where("resource_id = ?", resourceId)
+	if req.UserId != 0 {
+		db = db.Where("user_id = ?", req.UserId)
+	} else {
+		db = db.Where("client_key = ?", req.ClientKey)
+	}
+	result := db.Delete(&models.EduResourceFavorite{})
+	if result.Error != nil {
+		e.Error(500, result.Error, "取消收藏失败")
+		return
+	}
+	if result.RowsAffected > 0 {
+		_ = e.Orm.Model(&models.EduResource{}).Where("id = ?", resourceId).UpdateColumn("favorite_count", gorm.Expr("GREATEST(favorite_count - ?, 0)", 1)).Error
+	}
+	e.OK(resourceId, "取消收藏成功")
+}
+
+func (e EduResource) PublicGetComments(c *gin.Context) {
+	if err := e.MakeContext(c).MakeOrm().Errors; err != nil {
+		e.Error(500, err, err.Error())
+		return
+	}
+	list := make([]models.EduResourceComment, 0)
+	if err := e.Orm.Where("resource_id = ? and status = ?", c.Param("id"), 1).Order("id desc").Find(&list).Error; err != nil {
+		e.Error(500, err, "查询失败")
+		return
+	}
+	e.OK(list, "查询成功")
+}
+
+func (e EduResource) PublicCreateComment(c *gin.Context) {
+	req := resourceCommentReq{}
+	if err := e.MakeContext(c).MakeOrm().Bind(&req, binding.JSON).Errors; err != nil {
+		e.Error(500, err, err.Error())
+		return
+	}
+	if req.Content == "" {
+		e.Error(400, nil, "评论内容不能为空")
+		return
+	}
+	resourceId := parsePathId(c.Param("id"))
+	var resource models.EduResource
+	if err := e.Orm.Where("id = ? and status = ?", resourceId, models.ResourceStatusPublished).First(&resource).Error; err != nil {
+		e.Error(404, err, "资源不存在")
+		return
+	}
+	if req.Nickname == "" {
+		req.Nickname = "访客"
+	}
+	comment := models.EduResourceComment{
+		ResourceId: resourceId,
+		ParentId:   req.ParentId,
+		UserId:     req.UserId,
+		Nickname:   req.Nickname,
+		Content:    req.Content,
+		Status:     1,
+	}
+	if err := e.Orm.Create(&comment).Error; err != nil {
+		e.Error(500, err, "评论失败")
+		return
+	}
+	e.OK(comment, "评论成功")
 }
