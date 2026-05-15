@@ -124,6 +124,12 @@ func (e EduResourceFile) Upload(c *gin.Context) {
 		e.Error(500, err, "文件记录保存失败")
 		return
 	}
+	if usage == "cover" && resourceId != 0 {
+		_ = e.Orm.Model(&models.EduResource{}).Where("id = ?", resourceId).Updates(map[string]interface{}{
+			"cover_file_id": record.Id,
+			"update_by":     user.GetUserId(c),
+		}).Error
+	}
 	e.OK(record, "上传成功")
 }
 

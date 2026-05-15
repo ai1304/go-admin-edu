@@ -3,6 +3,7 @@
     <a-spin :loading="loading" style="width: 100%">
       <template v-if="resource">
         <section class="detail-hero">
+          <img v-if="resource.coverUrl" class="detail-cover" :src="resource.coverUrl" :alt="resource.title" />
           <a-breadcrumb>
             <a-breadcrumb-item>
               <router-link to="/resources">资源中心</router-link>
@@ -178,6 +179,13 @@ onMounted(fetchResource);
 <style scoped>
 .comment-block {
   margin-top: 28px;
+}
+
+.detail-cover {
+  width: 100%;
+  max-height: 320px;
+  object-fit: cover;
+  border-radius: 8px;
 }
 
 .comment-form {

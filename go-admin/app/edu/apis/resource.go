@@ -3,6 +3,8 @@ package apis
 import (
 	"go-admin/app/edu/models"
 	"go-admin/common/dto"
+	"go-admin/common/objectstorage"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/gin-gonic/gin/binding"
@@ -19,6 +21,7 @@ type resourceQuery struct {
 	dto.Pagination
 	Keyword          string `form:"keyword"`
 	Status           string `form:"status"`
+	Sort             string `form:"sort"`
 	SchoolId         int    `form:"schoolId"`
 	StageCategoryId  int    `form:"stageCategoryId"`
 	DisabilityTypeId int    `form:"disabilityTypeId"`
@@ -44,18 +47,15 @@ type resourceCommentReq struct {
 	Content  string `json:"content"`
 }
 
-func (e EduResource) GetPage(c *gin.Context) {
-	req := resourceQuery{}
-	if err := e.MakeContext(c).MakeOrm().Errors; err != nil {
-		e.Error(500, err, err.Error())
-		return
-	}
-	_ = c.ShouldBindQuery(&req)
-	list := make([]models.EduResource, 0)
-	db := e.Orm.Model(&models.EduResource{})
+type publicResourceDTO struct {
+	models.EduResource
+	CoverURL string `json:"coverUrl"`
+}
+
+func applyResourceFilters(db *gorm.DB, req resourceQuery) *gorm.DB {
 	if req.Keyword != "" {
 		like := "%" + req.Keyword + "%"
-		db = db.Where("title like ? or summary like ? or keywords like ?", like, like, like)
+		db = db.Where("title like ? or summary like ? or keywords like ? or author_name like ?", like, like, like, like)
 	}
 	if req.Status != "" {
 		db = db.Where("status = ?", req.Status)
@@ -78,12 +78,77 @@ func (e EduResource) GetPage(c *gin.Context) {
 	if req.TopicCategoryId != 0 {
 		db = db.Where("topic_category_id = ?", req.TopicCategoryId)
 	}
+	return db
+}
+
+func resourceOrder(sort string) string {
+	switch sort {
+	case "view":
+		return "view_count desc,id desc"
+	case "download":
+		return "download_count desc,id desc"
+	case "favorite":
+		return "favorite_count desc,id desc"
+	default:
+		return "id desc"
+	}
+}
+
+func (e EduResource) coverURLMap(c *gin.Context, resources []models.EduResource) map[int]string {
+	result := make(map[int]string)
+	coverIds := make([]int, 0)
+	for _, item := range resources {
+		if item.CoverFileId != 0 {
+			coverIds = append(coverIds, item.CoverFileId)
+		}
+	}
+	if len(coverIds) == 0 {
+		return result
+	}
+	files := make([]models.EduResourceFile, 0)
+	if err := e.Orm.Where("id in ?", coverIds).Find(&files).Error; err != nil {
+		return result
+	}
+	storage, err := objectstorage.NewFromExtend()
+	if err != nil {
+		return result
+	}
+	for _, file := range files {
+		url, err := storage.PresignedGetObject(c.Request.Context(), file.ObjectKey, 15*time.Minute)
+		if err == nil {
+			result[file.Id] = url
+		}
+	}
+	return result
+}
+
+func (e EduResource) toPublicResources(c *gin.Context, resources []models.EduResource) []publicResourceDTO {
+	coverURLs := e.coverURLMap(c, resources)
+	list := make([]publicResourceDTO, 0, len(resources))
+	for _, item := range resources {
+		list = append(list, publicResourceDTO{
+			EduResource: item,
+			CoverURL:    coverURLs[item.CoverFileId],
+		})
+	}
+	return list
+}
+
+func (e EduResource) GetPage(c *gin.Context) {
+	req := resourceQuery{}
+	if err := e.MakeContext(c).MakeOrm().Errors; err != nil {
+		e.Error(500, err, err.Error())
+		return
+	}
+	_ = c.ShouldBindQuery(&req)
+	list := make([]models.EduResource, 0)
+	db := applyResourceFilters(e.Orm.Model(&models.EduResource{}), req)
 	var count int64
 	if err := db.Count(&count).Error; err != nil {
 		e.Error(500, err, "查询失败")
 		return
 	}
-	if err := db.Order("id desc").Limit(req.GetPageSize()).Offset((req.GetPageIndex() - 1) * req.GetPageSize()).Find(&list).Error; err != nil {
+	if err := db.Order(resourceOrder(req.Sort)).Limit(req.GetPageSize()).Offset((req.GetPageIndex() - 1) * req.GetPageSize()).Find(&list).Error; err != nil {
 		e.Error(500, err, "查询失败")
 		return
 	}
@@ -99,21 +164,17 @@ func (e EduResource) PublicGetPage(c *gin.Context) {
 	_ = c.ShouldBindQuery(&req)
 	req.Status = models.ResourceStatusPublished
 	list := make([]models.EduResource, 0)
-	db := e.Orm.Model(&models.EduResource{}).Where("status = ?", req.Status)
-	if req.Keyword != "" {
-		like := "%" + req.Keyword + "%"
-		db = db.Where("title like ? or summary like ? or keywords like ?", like, like, like)
-	}
+	db := applyResourceFilters(e.Orm.Model(&models.EduResource{}), req)
 	var count int64
 	if err := db.Count(&count).Error; err != nil {
 		e.Error(500, err, "查询失败")
 		return
 	}
-	if err := db.Order("id desc").Limit(req.GetPageSize()).Offset((req.GetPageIndex() - 1) * req.GetPageSize()).Find(&list).Error; err != nil {
+	if err := db.Order(resourceOrder(req.Sort)).Limit(req.GetPageSize()).Offset((req.GetPageIndex() - 1) * req.GetPageSize()).Find(&list).Error; err != nil {
 		e.Error(500, err, "查询失败")
 		return
 	}
-	e.PageOK(list, int(count), req.GetPageIndex(), req.GetPageSize(), "查询成功")
+	e.PageOK(e.toPublicResources(c, list), int(count), req.GetPageIndex(), req.GetPageSize(), "查询成功")
 }
 
 func (e EduResource) Get(c *gin.Context) {
@@ -130,7 +191,8 @@ func (e EduResource) Get(c *gin.Context) {
 	_ = e.Orm.Where("resource_id = ?", data.Id).Find(&files).Error
 	_ = e.Orm.Model(&models.EduResource{}).Where("id = ?", data.Id).UpdateColumn("view_count", gorm.Expr("view_count + ?", 1)).Error
 	data.ViewCount++
-	e.OK(gin.H{"resource": data, "files": files}, "查询成功")
+	resource := publicResourceDTO{EduResource: data, CoverURL: e.coverURLMap(c, []models.EduResource{data})[data.CoverFileId]}
+	e.OK(gin.H{"resource": resource, "files": files}, "查询成功")
 }
 
 func (e EduResource) PublicGet(c *gin.Context) {
@@ -145,7 +207,10 @@ func (e EduResource) PublicGet(c *gin.Context) {
 	}
 	files := make([]models.EduResourceFile, 0)
 	_ = e.Orm.Where("resource_id = ?", data.Id).Find(&files).Error
-	e.OK(gin.H{"resource": data, "files": files}, "查询成功")
+	_ = e.Orm.Model(&models.EduResource{}).Where("id = ?", data.Id).UpdateColumn("view_count", gorm.Expr("view_count + ?", 1)).Error
+	data.ViewCount++
+	resource := publicResourceDTO{EduResource: data, CoverURL: e.coverURLMap(c, []models.EduResource{data})[data.CoverFileId]}
+	e.OK(gin.H{"resource": resource, "files": files}, "查询成功")
 }
 
 func (e EduResource) Insert(c *gin.Context) {

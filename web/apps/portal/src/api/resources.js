@@ -8,6 +8,14 @@ export function getPublishedResources(params) {
   });
 }
 
+export function getResourceCategories(params) {
+  return request({
+    url: "/portal/resource-categories",
+    method: "get",
+    params
+  });
+}
+
 export function getPublishedResource(id) {
   return request({
     url: `/portal/resources/${id}`,

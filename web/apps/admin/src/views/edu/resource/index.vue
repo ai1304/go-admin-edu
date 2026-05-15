@@ -117,10 +117,15 @@
     <a-modal v-model:visible="fileVisible" :title="`${currentResource?.title || ''} 附件`" width="760px" :footer="false">
       <a-space direction="vertical" fill>
         <a-space>
-          <a-button type="primary" @click="triggerUpload">上传附件</a-button>
+          <a-button type="primary" @click="triggerUpload('attachment')">上传附件</a-button>
+          <a-button @click="triggerUpload('cover')">上传封面</a-button>
+          <a-tag v-if="currentResource?.coverFileId" color="blue">当前封面文件 ID：{{ currentResource.coverFileId }}</a-tag>
           <input ref="fileInput" type="file" class="hidden-file-input" @change="handleFileChange" />
         </a-space>
         <a-table :columns="fileColumns" :data="fileList" :pagination="false" row-key="id">
+          <template #usage="{ record }">
+            <a-tag :color="record.usage === 'cover' ? 'blue' : 'gray'">{{ record.usage === 'cover' ? '封面' : '附件' }}</a-tag>
+          </template>
           <template #size="{ record }">{{ formatSize(record.size) }}</template>
           <template #fileOperations="{ record }">
             <a-button type="text" status="danger" size="small" @click="handleDeleteFile(record)">删除</a-button>
@@ -181,6 +186,7 @@ const formVisible = ref(false);
 const fileVisible = ref(false);
 const commentVisible = ref(false);
 const fileInput = ref(null);
+const uploadUsage = ref('attachment');
 const fileList = ref([]);
 const commentList = ref([]);
 const currentResource = ref(null);
@@ -199,6 +205,7 @@ const columns = [
 ];
 const fileColumns = [
   { title: '文件名', dataIndex: 'originalName', ellipsis: true, tooltip: true },
+  { title: '用途', slotName: 'usage', width: 90 },
   { title: '类型', dataIndex: 'contentType', width: 180 },
   { title: '大小', slotName: 'size', width: 120 },
   { title: '操作', slotName: 'fileOperations', width: 100 }
@@ -353,7 +360,8 @@ async function fetchComments() {
   commentList.value = res.data || [];
 }
 
-function triggerUpload() {
+function triggerUpload(usage = 'attachment') {
+  uploadUsage.value = usage;
   fileInput.value?.click();
 }
 
@@ -363,11 +371,17 @@ async function handleFileChange(event) {
   const formData = new FormData();
   formData.append('file', file);
   formData.append('resourceId', currentResource.value.id);
-  formData.append('usage', 'attachment');
-  await uploadResourceFile(formData);
+  formData.append('usage', uploadUsage.value);
+  const res = await uploadResourceFile(formData);
+  const uploadedFile = res.data || {};
+  if (uploadUsage.value === 'cover' && uploadedFile.id) {
+    await updateResource(currentResource.value.id, { ...currentResource.value, coverFileId: uploadedFile.id });
+    currentResource.value.coverFileId = uploadedFile.id;
+  }
   event.target.value = '';
-  Message.success('上传成功');
+  Message.success(uploadUsage.value === 'cover' ? '封面上传成功' : '上传成功');
   fetchFiles();
+  fetchData();
 }
 
 function handleDeleteFile(record) {
