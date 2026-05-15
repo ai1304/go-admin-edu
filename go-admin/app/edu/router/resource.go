@@ -60,6 +60,9 @@ func registerResourceRouter(v1 *gin.RouterGroup, authMiddleware *jwt.GinJWTMiddl
 		resources.DELETE("", resourceApi.Delete)
 		resources.PUT("/:id/submit-review", resourceApi.SubmitReview)
 		resources.PUT("/:id/review", resourceApi.Review)
+		resources.GET("/:id/comments", resourceApi.GetComments)
+		resources.PUT("/:id/comments/:commentId", resourceApi.UpdateComment)
+		resources.DELETE("/:id/comments", resourceApi.DeleteComments)
 	}
 
 	files := v1.Group("/edu/resource-files").Use(authMiddleware.MiddlewareFunc()).Use(middleware.AuthCheckRole())

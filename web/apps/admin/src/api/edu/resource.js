@@ -33,6 +33,18 @@ export function reviewResource(id, data) {
   return request({ url: `${resourceUrl}/${id}/review`, method: 'put', data });
 }
 
+export function getResourceComments(resourceId) {
+  return request({ url: `${resourceUrl}/${resourceId}/comments`, method: 'get' });
+}
+
+export function updateResourceComment(resourceId, commentId, data) {
+  return request({ url: `${resourceUrl}/${resourceId}/comments/${commentId}`, method: 'put', data });
+}
+
+export function removeResourceComments(resourceId, data) {
+  return request({ url: `${resourceUrl}/${resourceId}/comments`, method: 'delete', data });
+}
+
 export function getResourceCategories(params) {
   return request({ url: categoryUrl, method: 'get', params });
 }

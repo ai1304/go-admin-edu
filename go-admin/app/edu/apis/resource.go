@@ -250,6 +250,56 @@ func (e EduResource) Review(c *gin.Context) {
 	e.OK(resource.Id, "审核成功")
 }
 
+func (e EduResource) GetComments(c *gin.Context) {
+	if err := e.MakeContext(c).MakeOrm().Errors; err != nil {
+		e.Error(500, err, err.Error())
+		return
+	}
+	list := make([]models.EduResourceComment, 0)
+	if err := e.Orm.Where("resource_id = ?", c.Param("id")).Order("id desc").Find(&list).Error; err != nil {
+		e.Error(500, err, "查询失败")
+		return
+	}
+	e.OK(list, "查询成功")
+}
+
+func (e EduResource) UpdateComment(c *gin.Context) {
+	req := models.EduResourceComment{}
+	if err := e.MakeContext(c).MakeOrm().Bind(&req, binding.JSON).Errors; err != nil {
+		e.Error(500, err, err.Error())
+		return
+	}
+	req.SetUpdateBy(user.GetUserId(c))
+	updates := map[string]interface{}{
+		"nickname":  req.Nickname,
+		"content":   req.Content,
+		"status":    req.Status,
+		"update_by": req.UpdateBy,
+	}
+	if err := e.Orm.Model(&models.EduResourceComment{}).
+		Where("id = ? and resource_id = ?", c.Param("commentId"), c.Param("id")).
+		Updates(updates).Error; err != nil {
+		e.Error(500, err, "更新失败")
+		return
+	}
+	e.OK(c.Param("commentId"), "更新成功")
+}
+
+func (e EduResource) DeleteComments(c *gin.Context) {
+	req := struct {
+		Ids []int `json:"ids"`
+	}{}
+	if err := e.MakeContext(c).MakeOrm().Bind(&req, binding.JSON).Errors; err != nil {
+		e.Error(500, err, err.Error())
+		return
+	}
+	if err := e.Orm.Where("resource_id = ?", c.Param("id")).Delete(&models.EduResourceComment{}, req.Ids).Error; err != nil {
+		e.Error(500, err, "删除失败")
+		return
+	}
+	e.OK(req.Ids, "删除成功")
+}
+
 func (e EduResource) PublicFavoriteState(c *gin.Context) {
 	req := resourceFavoriteReq{}
 	if err := e.MakeContext(c).MakeOrm().Errors; err != nil {

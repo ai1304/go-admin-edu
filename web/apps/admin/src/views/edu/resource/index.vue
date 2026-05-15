@@ -30,6 +30,7 @@
           <a-space>
             <a-button type="text" size="small" @click="openEdit(record)">编辑</a-button>
             <a-button type="text" size="small" @click="openFiles(record)">附件</a-button>
+            <a-button type="text" size="small" @click="openComments(record)">评论</a-button>
             <a-button v-if="record.status === 'draft' || record.status === 'rejected'" type="text" size="small" @click="handleSubmitReview(record)">提交审核</a-button>
             <a-button v-if="record.status === 'reviewing'" type="text" size="small" @click="handleReview(record, 'approve')">通过</a-button>
             <a-button v-if="record.status === 'reviewing'" type="text" status="warning" size="small" @click="handleReview(record, 'reject')">驳回</a-button>
@@ -127,6 +128,20 @@
         </a-table>
       </a-space>
     </a-modal>
+
+    <a-modal v-model:visible="commentVisible" :title="`${currentResource?.title || ''} 评论`" width="860px" :footer="false">
+      <a-table :columns="commentColumns" :data="commentList" :pagination="false" row-key="id">
+        <template #status="{ record }">
+          <a-tag :color="record.status === 1 ? 'green' : 'gray'">{{ record.status === 1 ? '显示' : '隐藏' }}</a-tag>
+        </template>
+        <template #commentOperations="{ record }">
+          <a-space>
+            <a-button type="text" size="small" @click="toggleCommentStatus(record)">{{ record.status === 1 ? '隐藏' : '显示' }}</a-button>
+            <a-button type="text" status="danger" size="small" @click="handleDeleteComment(record)">删除</a-button>
+          </a-space>
+        </template>
+      </a-table>
+    </a-modal>
   </div>
 </template>
 
@@ -136,12 +151,15 @@ import { onMounted, reactive, ref } from 'vue';
 import {
   addResource,
   getResourceCategories,
+  getResourceComments,
   getResourceFiles,
   getResources,
+  removeResourceComments,
   removeResourceFiles,
   removeResources,
   reviewResource,
   submitResourceReview,
+  updateResourceComment,
   updateResource,
   uploadResourceFile
 } from '@/api/edu/resource';
@@ -161,8 +179,10 @@ const tableData = ref([]);
 const pagination = reactive({ current: 1, pageSize: 10, total: 0 });
 const formVisible = ref(false);
 const fileVisible = ref(false);
+const commentVisible = ref(false);
 const fileInput = ref(null);
 const fileList = ref([]);
+const commentList = ref([]);
 const currentResource = ref(null);
 const formModel = reactive(defaultForm());
 const categoryOptions = reactive({});
@@ -174,13 +194,21 @@ const columns = [
   { title: '状态', slotName: 'status', width: 110 },
   { title: '浏览', dataIndex: 'viewCount', width: 90 },
   { title: '下载', dataIndex: 'downloadCount', width: 90 },
-  { title: '操作', slotName: 'operations', width: 310 }
+  { title: '收藏', dataIndex: 'favoriteCount', width: 90 },
+  { title: '操作', slotName: 'operations', width: 360 }
 ];
 const fileColumns = [
   { title: '文件名', dataIndex: 'originalName', ellipsis: true, tooltip: true },
   { title: '类型', dataIndex: 'contentType', width: 180 },
   { title: '大小', slotName: 'size', width: 120 },
   { title: '操作', slotName: 'fileOperations', width: 100 }
+];
+const commentColumns = [
+  { title: '昵称', dataIndex: 'nickname', width: 140 },
+  { title: '内容', dataIndex: 'content', ellipsis: true, tooltip: true },
+  { title: '点赞', dataIndex: 'likeCount', width: 80 },
+  { title: '状态', slotName: 'status', width: 90 },
+  { title: '操作', slotName: 'commentOperations', width: 140 }
 ];
 
 function defaultForm() {
@@ -306,11 +334,23 @@ async function openFiles(record) {
   await fetchFiles();
 }
 
+async function openComments(record) {
+  currentResource.value = record;
+  commentVisible.value = true;
+  await fetchComments();
+}
+
 async function fetchFiles() {
   if (!currentResource.value?.id) return;
   const res = await getResourceFiles({ resourceId: currentResource.value.id, pageIndex: 1, pageSize: 100 });
   const payload = getPagePayload(res);
   fileList.value = payload.list || payload || [];
+}
+
+async function fetchComments() {
+  if (!currentResource.value?.id) return;
+  const res = await getResourceComments(currentResource.value.id);
+  commentList.value = res.data || [];
 }
 
 function triggerUpload() {
@@ -338,6 +378,25 @@ function handleDeleteFile(record) {
       await removeResourceFiles({ ids: [record.id] });
       Message.success('删除成功');
       fetchFiles();
+    }
+  });
+}
+
+async function toggleCommentStatus(record) {
+  const status = record.status === 1 ? 0 : 1;
+  await updateResourceComment(currentResource.value.id, record.id, { ...record, status });
+  Message.success(status === 1 ? '评论已显示' : '评论已隐藏');
+  fetchComments();
+}
+
+function handleDeleteComment(record) {
+  Modal.confirm({
+    title: '确认删除评论',
+    content: `确定删除「${record.nickname || '访客'}」的评论吗？`,
+    async onOk() {
+      await removeResourceComments(currentResource.value.id, { ids: [record.id] });
+      Message.success('删除成功');
+      fetchComments();
     }
   });
 }
