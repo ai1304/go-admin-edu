@@ -3,6 +3,7 @@ package apis
 import (
 	"go-admin/app/edu/models"
 	"go-admin/common/dto"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/gin-gonic/gin/binding"
@@ -22,6 +23,13 @@ type caseQuery struct {
 	Desensitize bool   `form:"desensitize"`
 }
 
+type caseAccessLogQuery struct {
+	dto.Pagination
+	Action  string `form:"action"`
+	UserId  int    `form:"userId"`
+	Keyword string `form:"keyword"`
+}
+
 func (e EduCase) writeAccessLog(c *gin.Context, caseId int, action string) {
 	log := models.EduCaseAccessLog{
 		CaseId:    caseId,
@@ -38,9 +46,34 @@ func (e EduCase) writeAccessLog(c *gin.Context, caseId int, action string) {
 
 func desensitizeCases(list []models.EduCase) {
 	for index := range list {
-		list[index].StudentName = maskName(list[index].StudentName)
-		list[index].StudentCode = maskCode(list[index].StudentCode)
-		list[index].Birthday = ""
+		desensitizeCase(&list[index])
+	}
+}
+
+func desensitizeCase(data *models.EduCase) {
+	data.StudentName = maskName(data.StudentName)
+	data.StudentCode = maskCode(data.StudentCode)
+	data.Birthday = ""
+	data.Summary = maskLongText(data.Summary)
+}
+
+func desensitizeIEPs(list []models.EduCaseIEP) {
+	for index := range list {
+		list[index].Goal = maskLongText(list[index].Goal)
+		list[index].Plan = maskLongText(list[index].Plan)
+		list[index].Evaluation = maskLongText(list[index].Evaluation)
+	}
+}
+
+func desensitizeAssessments(list []models.EduCaseAssessment) {
+	for index := range list {
+		list[index].Result = maskLongText(list[index].Result)
+	}
+}
+
+func desensitizeInterventions(list []models.EduCaseIntervention) {
+	for index := range list {
+		list[index].Content = maskLongText(list[index].Content)
 	}
 }
 
@@ -64,6 +97,18 @@ func maskCode(value string) string {
 		return "****"
 	}
 	return string(runes[:2]) + "****" + string(runes[len(runes)-2:])
+}
+
+func maskLongText(value string) string {
+	if strings.TrimSpace(value) == "" {
+		return ""
+	}
+	return "内容已脱敏"
+}
+
+func shouldDesensitize(c *gin.Context) bool {
+	value := strings.ToLower(c.Query("desensitize"))
+	return value == "true" || value == "1" || value == "yes"
 }
 
 func (e EduCase) GetPage(c *gin.Context) {
@@ -116,6 +161,12 @@ func (e EduCase) Get(c *gin.Context) {
 	_ = e.Orm.Where("case_id = ?", data.Id).Order("id desc").Find(&ieps).Error
 	_ = e.Orm.Where("case_id = ?", data.Id).Order("id desc").Find(&assessments).Error
 	_ = e.Orm.Where("case_id = ?", data.Id).Order("id desc").Find(&interventions).Error
+	if shouldDesensitize(c) {
+		desensitizeCase(&data)
+		desensitizeIEPs(ieps)
+		desensitizeAssessments(assessments)
+		desensitizeInterventions(interventions)
+	}
 	e.writeAccessLog(c, data.Id, "view_detail")
 	e.OK(gin.H{"case": data, "ieps": ieps, "assessments": assessments, "interventions": interventions}, "查询成功")
 }
@@ -167,16 +218,34 @@ func (e EduCase) Delete(c *gin.Context) {
 }
 
 func (e EduCase) GetAccessLogs(c *gin.Context) {
+	req := caseAccessLogQuery{}
 	if err := e.MakeContext(c).MakeOrm().Errors; err != nil {
 		e.Error(500, err, err.Error())
 		return
 	}
+	_ = c.ShouldBindQuery(&req)
 	list := make([]models.EduCaseAccessLog, 0)
-	if err := e.Orm.Where("case_id = ?", c.Param("id")).Order("id desc").Limit(200).Find(&list).Error; err != nil {
+	db := e.Orm.Model(&models.EduCaseAccessLog{}).Where("case_id = ?", c.Param("id"))
+	if req.Action != "" {
+		db = db.Where("action = ?", req.Action)
+	}
+	if req.UserId != 0 {
+		db = db.Where("user_id = ?", req.UserId)
+	}
+	if req.Keyword != "" {
+		like := "%" + req.Keyword + "%"
+		db = db.Where("ip like ? or path like ? or user_agent like ?", like, like, like)
+	}
+	var count int64
+	if err := db.Count(&count).Error; err != nil {
 		e.Error(500, err, "查询失败")
 		return
 	}
-	e.OK(list, "查询成功")
+	if err := db.Order("id desc").Limit(req.GetPageSize()).Offset((req.GetPageIndex() - 1) * req.GetPageSize()).Find(&list).Error; err != nil {
+		e.Error(500, err, "查询失败")
+		return
+	}
+	e.PageOK(list, int(count), req.GetPageIndex(), req.GetPageSize(), "查询成功")
 }
 
 func (e EduCase) AddIEP(c *gin.Context) {
@@ -206,6 +275,9 @@ func (e EduCase) GetIEPs(c *gin.Context) {
 	if err := e.Orm.Where("case_id = ?", c.Param("id")).Order("id desc").Find(&list).Error; err != nil {
 		e.Error(500, err, "查询失败")
 		return
+	}
+	if shouldDesensitize(c) {
+		desensitizeIEPs(list)
 	}
 	e.writeAccessLog(c, parsePathId(c.Param("id")), "view_ieps")
 	e.OK(list, "查询成功")
@@ -259,6 +331,9 @@ func (e EduCase) GetAssessments(c *gin.Context) {
 	if err := e.Orm.Where("case_id = ?", c.Param("id")).Order("id desc").Find(&list).Error; err != nil {
 		e.Error(500, err, "查询失败")
 		return
+	}
+	if shouldDesensitize(c) {
+		desensitizeAssessments(list)
 	}
 	e.writeAccessLog(c, parsePathId(c.Param("id")), "view_assessments")
 	e.OK(list, "查询成功")
@@ -325,6 +400,9 @@ func (e EduCase) GetInterventions(c *gin.Context) {
 	if err := e.Orm.Where("case_id = ?", c.Param("id")).Order("id desc").Find(&list).Error; err != nil {
 		e.Error(500, err, "查询失败")
 		return
+	}
+	if shouldDesensitize(c) {
+		desensitizeInterventions(list)
 	}
 	e.writeAccessLog(c, parsePathId(c.Param("id")), "view_interventions")
 	e.OK(list, "查询成功")

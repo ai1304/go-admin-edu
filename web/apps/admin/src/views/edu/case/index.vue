@@ -92,6 +92,10 @@
     </a-modal>
 
     <a-modal v-model:visible="manageVisible" :title="`${currentCase?.title || ''} 业务管理`" width="1040px" :footer="false">
+      <a-space class="manage-toolbar">
+        <span>脱敏查看</span>
+        <a-switch v-model="manageDesensitize" @change="fetchManageData" />
+      </a-space>
       <a-tabs default-active-key="ieps">
         <a-tab-pane key="ieps" title="IEP">
           <a-space direction="vertical" fill>
@@ -139,9 +143,36 @@
           </a-space>
         </a-tab-pane>
         <a-tab-pane key="accessLogs" title="访问日志">
-          <a-table :columns="accessLogColumns" :data="accessLogList" :pagination="false" row-key="id">
-            <template #action="{ record }">{{ accessActionText[record.action] || record.action }}</template>
-          </a-table>
+          <a-space direction="vertical" fill>
+            <a-form :model="accessLogQuery" layout="inline">
+              <a-form-item label="动作">
+                <a-select v-model="accessLogQuery.action" allow-clear placeholder="请选择动作" style="width: 160px">
+                  <a-option v-for="item in accessActionOptions" :key="item.value" :value="item.value">{{ item.label }}</a-option>
+                </a-select>
+              </a-form-item>
+              <a-form-item label="用户ID">
+                <a-input-number v-model="accessLogQuery.userId" allow-clear placeholder="用户 ID" style="width: 140px" />
+              </a-form-item>
+              <a-form-item label="关键词">
+                <a-input v-model="accessLogQuery.keyword" allow-clear placeholder="IP、路径或 User-Agent" />
+              </a-form-item>
+              <a-form-item>
+                <a-space>
+                  <a-button type="primary" @click="searchAccessLogs">查询</a-button>
+                  <a-button @click="resetAccessLogQuery">重置</a-button>
+                </a-space>
+              </a-form-item>
+            </a-form>
+            <a-table
+              :columns="accessLogColumns"
+              :data="accessLogList"
+              :pagination="accessLogPagination"
+              row-key="id"
+              @page-change="handleAccessLogPageChange"
+            >
+              <template #action="{ record }">{{ accessActionText[record.action] || record.action }}</template>
+            </a-table>
+          </a-space>
         </a-tab-pane>
       </a-tabs>
     </a-modal>
@@ -271,6 +302,7 @@ const manageVisible = ref(false);
 const iepVisible = ref(false);
 const assessmentVisible = ref(false);
 const interventionVisible = ref(false);
+const manageDesensitize = ref(false);
 const currentCase = ref(null);
 const formModel = reactive(defaultForm());
 const iepModel = reactive(defaultIepForm());
@@ -286,6 +318,9 @@ const accessActionText = {
   view_assessments: '查看评估',
   view_interventions: '查看干预'
 };
+const accessActionOptions = Object.entries(accessActionText).map(([value, label]) => ({ value, label }));
+const accessLogQuery = reactive({ action: '', userId: undefined, keyword: '', pageIndex: 1, pageSize: 10 });
+const accessLogPagination = reactive({ current: 1, pageSize: 10, total: 0 });
 
 const columns = [
   { title: '案例名称', dataIndex: 'title', ellipsis: true, tooltip: true },
@@ -414,22 +449,61 @@ function handleDelete(record) {
 
 async function openManage(record) {
   currentCase.value = record;
+  manageDesensitize.value = false;
+  resetAccessLogQuery(false);
   manageVisible.value = true;
   await fetchManageData();
 }
 
 async function fetchManageData() {
   if (!currentCase.value?.id) return;
+  const sensitiveParams = { desensitize: manageDesensitize.value };
   const [iepsRes, assessmentsRes, interventionsRes, accessLogsRes] = await Promise.all([
-    getCaseIeps(currentCase.value.id),
-    getCaseAssessments(currentCase.value.id),
-    getCaseInterventions(currentCase.value.id),
-    getCaseAccessLogs(currentCase.value.id)
+    getCaseIeps(currentCase.value.id, sensitiveParams),
+    getCaseAssessments(currentCase.value.id, sensitiveParams),
+    getCaseInterventions(currentCase.value.id, sensitiveParams),
+    getCaseAccessLogs(currentCase.value.id, accessLogQuery)
   ]);
   iepList.value = iepsRes.data || [];
   assessmentList.value = assessmentsRes.data || [];
   interventionList.value = interventionsRes.data || [];
-  accessLogList.value = accessLogsRes.data || [];
+  setAccessLogs(accessLogsRes);
+}
+
+async function fetchAccessLogs() {
+  if (!currentCase.value?.id) return;
+  const res = await getCaseAccessLogs(currentCase.value.id, accessLogQuery);
+  setAccessLogs(res);
+}
+
+function searchAccessLogs() {
+  accessLogQuery.pageIndex = 1;
+  accessLogPagination.current = 1;
+  fetchAccessLogs();
+}
+
+function setAccessLogs(res) {
+  const payload = res.data || {};
+  accessLogList.value = payload.list || payload || [];
+  accessLogPagination.total = payload.count || res.total || 0;
+  accessLogPagination.current = accessLogQuery.pageIndex;
+}
+
+function handleAccessLogPageChange(page) {
+  accessLogQuery.pageIndex = page;
+  accessLogPagination.current = page;
+  fetchAccessLogs();
+}
+
+function resetAccessLogQuery(shouldFetch = true) {
+  accessLogQuery.action = '';
+  accessLogQuery.userId = undefined;
+  accessLogQuery.keyword = '';
+  accessLogQuery.pageIndex = 1;
+  accessLogPagination.current = 1;
+  if (shouldFetch) {
+    fetchAccessLogs();
+  }
 }
 
 function openIepCreate() {

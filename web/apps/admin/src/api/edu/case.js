@@ -6,8 +6,8 @@ export function getCases(params) {
   return request({ url, method: 'get', params });
 }
 
-export function getCase(id) {
-  return request({ url: `${url}/${id}`, method: 'get' });
+export function getCase(id, params) {
+  return request({ url: `${url}/${id}`, method: 'get', params });
 }
 
 export function addCase(data) {
@@ -22,16 +22,16 @@ export function removeCases(data) {
   return request({ url, method: 'delete', data });
 }
 
-export function getCaseAccessLogs(id) {
-  return request({ url: `${url}/${id}/access-logs`, method: 'get' });
+export function getCaseAccessLogs(id, params) {
+  return request({ url: `${url}/${id}/access-logs`, method: 'get', params });
 }
 
 export function addCaseIep(id, data) {
   return request({ url: `${url}/${id}/ieps`, method: 'post', data });
 }
 
-export function getCaseIeps(id) {
-  return request({ url: `${url}/${id}/ieps`, method: 'get' });
+export function getCaseIeps(id, params) {
+  return request({ url: `${url}/${id}/ieps`, method: 'get', params });
 }
 
 export function updateCaseIep(id, iepId, data) {
@@ -42,8 +42,8 @@ export function removeCaseIeps(id, data) {
   return request({ url: `${url}/${id}/ieps`, method: 'delete', data });
 }
 
-export function getCaseAssessments(id) {
-  return request({ url: `${url}/${id}/assessments`, method: 'get' });
+export function getCaseAssessments(id, params) {
+  return request({ url: `${url}/${id}/assessments`, method: 'get', params });
 }
 
 export function addCaseAssessment(id, data) {
@@ -58,8 +58,8 @@ export function removeCaseAssessments(id, data) {
   return request({ url: `${url}/${id}/assessments`, method: 'delete', data });
 }
 
-export function getCaseInterventions(id) {
-  return request({ url: `${url}/${id}/interventions`, method: 'get' });
+export function getCaseInterventions(id, params) {
+  return request({ url: `${url}/${id}/interventions`, method: 'get', params });
 }
 
 export function addCaseIntervention(id, data) {
