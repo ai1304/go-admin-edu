@@ -1,6 +1,6 @@
 ﻿# 特殊教育资源库平台开发计划
 
-更新时间：2026-05-15
+更新时间：2026-05-16
 
 ## 1. 当前技术基线
 
@@ -580,6 +580,68 @@
 - 后端新增资源审核记录接口：`GET /api/v1/edu/resources/:id/reviews`。
 - 后端新增资源状态运营接口：`PUT /api/v1/edu/resources/:id/status`，支持已发布资源下架、已下架资源恢复发布，并写入审核/运营记录。
 - 后台资源管理页已重写为干净 UTF-8 文案，保留资源表单、标签、附件、评论管理能力，并新增审核记录弹窗与下架/恢复发布操作。
+- 后端新增特教案例访问日志导出接口：`GET /api/v1/edu/cases/:id/access-logs/export`，复用访问日志筛选条件和 `review` 授权校验，导出 CSV 最多 10000 条。
+- 后台特教案例访问日志页签新增导出按钮，可按动作、用户 ID、关键词筛选后导出当前案例访问日志。
+- 后端新增专家互动模型与迁移：`go-admin/cmd/migrate/migration/version/2026051600010_edu_expert_interactions.go`，为专家补充收藏量、分享量和访客收藏记录。
+- 后端新增专家门户互动与文件访问接口：
+  - `GET /api/v1/portal/experts/:id/resources/:resourceId/access-url`
+  - `GET /api/v1/portal/experts/:id/favorite-state`
+  - `POST /api/v1/portal/experts/:id/favorite`
+  - `DELETE /api/v1/portal/experts/:id/favorite`
+  - `PUT /api/v1/portal/experts/:id/share`
+- 门户专家详情已支持文件型专家资源预览/下载、专家收藏/取消收藏、分享链接和收藏/分享计数展示。
+- 后端新增课程学习进度迁移：`go-admin/cmd/migrate/migration/version/2026051600020_edu_course_learning_progress.go`，为学习记录补充观看秒数字段。
+- 后端新增课程门户课时视频临时访问地址接口：`GET /api/v1/portal/courses/:id/lessons/:lessonId/video-url`。
+- 后端课程门户学习记录接口已支持 `watchedSeconds`，可记录视频观看秒数并继续保留完成状态和学习人数统计。
+- 门户课程详情已新增课时视频播放区域、学习按钮、播放中自动上报进度、播放结束自动完成课时。
+- 门户课程作业提交弹窗已补充附件文件 ID 字段，支持文字内容或附件形式提交作业。
+- 后端新增门户课程作业附件上传接口：`POST /api/v1/portal/courses/:id/assignments/:assignmentId/files/upload`，上传后生成 `edu_resource_file` 元数据并返回文件 ID。
+- 门户课程作业提交弹窗已接入附件上传入口，上传成功后自动回填 `fileId` 再提交作业。
+- 后端数据中心新增基础统计接口：
+  - `GET /api/v1/edu/stats/resources`
+  - `GET /api/v1/edu/stats/courses`
+  - `GET /api/v1/edu/stats/activities`
+  - `GET /api/v1/edu/stats/schools`
+  - `GET /api/v1/edu/stats/teachers`
+  - `GET /api/v1/edu/stats/students`
+  - `GET /api/v1/edu/stats/cases`
+  - `GET /api/v1/edu/stats/export`
+- 后台数据中心已从单一概览卡片升级为多分区仪表盘，展示资源分布、课程学习、活动参与、学校贡献、教师活跃、学生学习和敏感案例概览，并支持导出概览 CSV。
+- 后端新增搜索抽象与 MySQL 实现：`go-admin/app/edu/search/resource.go`，当前资源公开检索已通过 `ResourceSearcher` 调用 MySQL 条件筛选，后续可替换为 ES/OpenSearch。
+- 后端新增门户资源搜索接口：`GET /api/v1/portal/search/resources`，门户资源列表已切换到该搜索入口。
+- 后端新增资源搜索同步入口：`PUT /api/v1/edu/resources/search/reindex`，当前 MySQL 搜索实现返回已发布资源同步统计，为后续外部索引同步预留接口。
+- 后台资源管理新增「同步搜索」按钮，可触发资源搜索同步入口。
+- 后端新增课程作业提交附件访问地址接口：`GET /api/v1/edu/courses/:id/assignments/:assignmentId/submissions/:submissionId/file-url`。
+- 后台课程作业提交记录已新增附件预览/下载入口和快捷评分入口，可直接打开提交附件并编辑分数/状态。
+- 后端新增教研活动门户字段迁移：`go-admin/cmd/migrate/migration/version/2026051600030_edu_activity_portal_fields.go`，为报名、签到和活动成果补充访客标识。
+- 后端新增教研活动门户闭环接口：
+  - `GET /api/v1/portal/activities/:id/signup-state`
+  - `DELETE /api/v1/portal/activities/:id/signup`
+  - `POST /api/v1/portal/activities/:id/checkin`
+  - `POST /api/v1/portal/activities/:id/outcomes/files/upload`
+  - `POST /api/v1/portal/activities/:id/outcomes`
+- 门户活动详情已支持查询报名状态、取消报名、活动签到、上传成果附件和提交活动成果。
+- 后端新增特教案例附件与审核迁移：`go-admin/cmd/migrate/migration/version/2026051600040_edu_case_attachments_reviews.go`。
+- 后端新增特教案例附件与审核接口：
+  - `PUT /api/v1/edu/cases/:id/submit-review`
+  - `PUT /api/v1/edu/cases/:id/review`
+  - `GET /api/v1/edu/cases/:id/reviews`
+  - `GET /api/v1/edu/cases/:id/attachments`
+  - `POST /api/v1/edu/cases/:id/attachments`
+  - `DELETE /api/v1/edu/cases/:id/attachments`
+  - `GET /api/v1/edu/cases/:id/attachments/:attachmentId/file-url`
+- 后台特教案例 API 封装已补充案例审核、审核记录、附件管理和附件临时访问地址方法。
+- 后台特教案例「业务管理」已新增案例附件页签，支持上传附件、手动关联文件 ID、打开临时访问地址和删除附件。
+- 后台特教案例「业务管理」已新增案例审核页签，支持提交审核、审核通过、审核驳回和查看审核记录。
+- 门户端新增教师工作台入口 `/teacher/workbench`，通过受保护的案例接口查看授权个案、IEP、评估记录、干预方案和案例附件。
+- 门户请求封装已支持从 `localStorage.portalToken` 或 `localStorage.token` 读取 JWT 并自动附加到 `Authorization` 请求头，便于教师工作台复用后台权限模型。
+- 门户登录页已接入 `/api/v1/login`、`/api/v1/captcha` 和 `/api/v1/getinfo`，登录成功后写入门户会话并跳转教师工作台。
+- 门户布局已支持显示当前登录用户和退出登录，退出时清理门户本地会话。
+- 门户教师工作台已新增 IEP、评估记录、干预方案的新增、编辑和删除入口，复用后端案例子业务接口与 `edit` 授权控制。
+- 后端 `sys_user` 已扩展 `tenant_id`、`region_id`、`school_id`、`user_type` 字段，并新增迁移 `go-admin/cmd/migrate/migration/version/2026051600050_sys_user_edu_scope.go`。
+- 登录 JWT、`/api/v1/getinfo` 和用户管理 DTO 已同步返回/保存教育业务范围字段，为区域、学校和用户类型数据权限提供基础。
+- 后端新增教育业务范围过滤工具，资源、课程、教研活动、特教案例后台列表会按当前用户绑定的学校或区域自动收窄；超级管理员、系统管理员或未绑定区域/学校的用户保持原有范围。
+- 后台用户管理已支持按用户类型、区域、学校筛选，并可在用户表单中维护租户 ID、区域、学校和用户类型。
 
 已验证：
 
@@ -593,6 +655,18 @@
 - 尚未进行浏览器端真实联调和接口数据联调。
 - 尚未实际连接 MySQL 执行迁移。
 - 当前机器 Docker CLI 不可用，尚未执行 `docker compose config` 或启动完整 Docker 环境。
+- 2026-05-16 本轮新增的专家收藏、分享和文件访问能力按要求暂未执行构建和联调验证。
+- 2026-05-16 本轮新增的课程视频播放、观看进度和附件作业提交能力按要求暂未执行构建和联调验证。
+- 2026-05-16 本轮新增的课程作业附件上传闭环按要求暂未执行构建和联调验证。
+- 2026-05-16 本轮新增的数据中心多维统计和 CSV 导出按要求暂未执行构建和联调验证。
+- 2026-05-16 本轮新增的资源搜索抽象、门户搜索入口和搜索同步入口按要求暂未执行构建和联调验证。
+- 2026-05-16 本轮新增的课程后台作业附件访问和快捷评分入口按要求暂未执行构建和联调验证。
+- 2026-05-16 本轮新增的教研活动取消报名、门户签到和成果上传闭环按要求暂未执行构建和联调验证。
+- 2026-05-16 本轮新增的特教案例附件和审核接口按要求暂未执行构建和联调验证。
+- 2026-05-16 本轮新增的后台特教案例附件管理和审核管理页签按要求暂未执行构建和联调验证。
+- 2026-05-16 本轮新增的门户教师工作台和受保护案例接口访问按要求暂未执行构建和联调验证。
+- 2026-05-16 本轮新增的门户登录闭环、退出登录和教师工作台编辑能力按要求暂未执行构建和联调验证。
+- 2026-05-16 本轮新增的用户教育业务范围字段、迁移、用户管理表单和后台列表数据范围过滤按要求暂未执行构建和联调验证。
 
 ## 8. 近期最小可执行清单
 
@@ -604,9 +678,10 @@
 4. 补充教育业务按钮级权限和普通角色授权策略。
 5. 扩展用户与数据权限：`tenant_id`、`region_id`、`school_id`、用户类型。
 6. 继续实测 MinIO 上传、资源创建、提交审核、审核发布、门户展示、附件下载全链路，并修复联调问题。
-7. 继续完善专家资源的文件预览/下载、收藏与分享能力。
-8. 完善课程门户视频播放、附件作业提交和学习进度自动更新。
-9. 补充特教案例访问日志导出能力，并继续完善区域/学校级数据权限过滤。
+7. 继续完善区域/学校级数据权限过滤。
+8. 补充教育业务按钮级权限和普通角色授权策略的实测修正。
+9. 继续开发搜索增强：热门资源缓存、浏览/下载异步计数、ES/OpenSearch 实现预留配置。
+10. 继续完善按钮级权限初始化、角色授权策略和数据权限联调修正。
 
 ## 9. 当前前端目录结构
 

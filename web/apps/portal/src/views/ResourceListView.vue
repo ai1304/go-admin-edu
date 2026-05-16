@@ -84,7 +84,7 @@
 <script setup>
 import { onMounted, reactive, ref } from "vue";
 import PortalLayout from "@/layouts/PortalLayout.vue";
-import { getPublishedResources, getResourceCategories, getResourceTags } from "@/api/resources";
+import { getResourceCategories, getResourceTags, searchPublishedResources } from "@/api/resources";
 
 const loading = ref(false);
 const resources = ref([]);
@@ -136,7 +136,7 @@ async function fetchTags() {
 async function fetchResources() {
   loading.value = true;
   try {
-    const res = await getPublishedResources(query);
+    const res = await searchPublishedResources(query);
     const payload = pagePayload(res);
     resources.value = payload.list || payload || [];
     total.value = payload.count || res.total || 0;

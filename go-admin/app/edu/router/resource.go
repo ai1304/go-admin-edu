@@ -20,6 +20,7 @@ func registerPublicResourceRouter(v1 *gin.RouterGroup) {
 	fileApi := apis.EduResourceFile{}
 	v1.GET("/portal/resource-categories", categoryApi.GetPage)
 	v1.GET("/portal/resource-tags", tagApi.GetPage)
+	v1.GET("/portal/search/resources", resourceApi.PublicSearch)
 	r := v1.Group("/portal/resources")
 	{
 		r.GET("", resourceApi.PublicGetPage)
@@ -63,6 +64,7 @@ func registerResourceRouter(v1 *gin.RouterGroup, authMiddleware *jwt.GinJWTMiddl
 		resources.POST("", resourceApi.Insert)
 		resources.PUT("/:id", resourceApi.Update)
 		resources.DELETE("", resourceApi.Delete)
+		resources.PUT("/search/reindex", resourceApi.ReindexSearch)
 		resources.PUT("/:id/submit-review", resourceApi.SubmitReview)
 		resources.PUT("/:id/review", resourceApi.Review)
 		resources.GET("/:id/reviews", resourceApi.GetReviews)

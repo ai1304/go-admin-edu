@@ -22,6 +22,23 @@
           <article class="detail-panel">
             <h2>教学目标</h2>
             <p>{{ course.objectives || "暂未填写教学目标。" }}</p>
+            <section v-if="currentLesson" class="video-panel">
+              <div class="section-title">
+                <h2>正在学习：{{ currentLesson.title }}</h2>
+                <a-tag :color="lessonProgress(currentLesson.id) >= 100 ? 'green' : 'orange'">
+                  {{ lessonProgress(currentLesson.id) }}%
+                </a-tag>
+              </div>
+              <video
+                v-if="videoUrl"
+                class="lesson-video"
+                :src="videoUrl"
+                controls
+                @timeupdate="handleVideoTimeUpdate"
+                @ended="handleVideoEnded"
+              ></video>
+              <a-empty v-else description="该课时暂未配置视频" />
+            </section>
             <div class="outline-list">
               <h2>课程大纲</h2>
               <div v-if="chapters.length" class="outline-chapters">
@@ -32,6 +49,7 @@
                       <span>{{ lesson.title }} · {{ formatDuration(lesson.durationSeconds) }}</span>
                       <a-space>
                         <a-tag :color="lessonProgress(lesson.id) >= 100 ? 'green' : 'orange'">{{ lessonProgress(lesson.id) }}%</a-tag>
+                        <a-button size="mini" @click="openLesson(lesson)">学习</a-button>
                         <a-button size="mini" type="primary" @click="markLessonFinished(lesson)">标记完成</a-button>
                       </a-space>
                     </div>
@@ -80,8 +98,17 @@
         <a-form-item field="nickname" label="昵称">
           <a-input v-model="assignmentForm.nickname" placeholder="请输入昵称" />
         </a-form-item>
-        <a-form-item field="content" label="提交内容" required>
+        <a-form-item field="content" label="提交内容">
           <a-textarea v-model="assignmentForm.content" :auto-size="{ minRows: 4, maxRows: 8 }" placeholder="请输入作业内容" />
+        </a-form-item>
+        <a-form-item field="fileId" label="附件文件 ID">
+          <a-input-number v-model="assignmentForm.fileId" :min="0" placeholder="已上传附件的文件 ID，可选" style="width: 100%" />
+        </a-form-item>
+        <a-form-item label="上传附件">
+          <input type="file" :disabled="uploadingAssignmentFile" @change="handleAssignmentFileChange" />
+          <p v-if="uploadedAssignmentFile" class="upload-tip">
+            已上传：{{ uploadedAssignmentFile.originalName }}，文件 ID：{{ uploadedAssignmentFile.id }}
+          </p>
         </a-form-item>
       </a-form>
     </a-modal>
@@ -93,7 +120,14 @@ import { Message } from "@arco-design/web-vue";
 import { computed, onMounted, reactive, ref } from "vue";
 import { useRoute } from "vue-router";
 import PortalLayout from "@/layouts/PortalLayout.vue";
-import { getCourseLearningRecords, getPublishedCourse, submitCourseAssignment, trackCourseLesson } from "@/api/courses";
+import {
+  getCourseLearningRecords,
+  getCourseLessonVideoUrl,
+  getPublishedCourse,
+  submitCourseAssignment,
+  trackCourseLesson,
+  uploadCourseAssignmentFile
+} from "@/api/courses";
 
 const route = useRoute();
 const loading = ref(false);
@@ -102,9 +136,14 @@ const chapters = ref([]);
 const lessons = ref([]);
 const assignments = ref([]);
 const learningRecords = ref([]);
+const currentLesson = ref(null);
+const videoUrl = ref("");
+const lastTrackedSecond = ref(0);
 const assignmentVisible = ref(false);
 const currentAssignment = ref(null);
-const assignmentForm = reactive({ nickname: "", content: "" });
+const assignmentForm = reactive({ nickname: "", content: "", fileId: undefined });
+const uploadedAssignmentFile = ref(null);
+const uploadingAssignmentFile = ref(false);
 const difficultyText = {
   basic: "基础",
   advanced: "进阶",
@@ -153,36 +192,102 @@ function lessonProgress(lessonId) {
   return learningRecords.value.find((item) => item.lessonId === lessonId)?.progress || 0;
 }
 
-async function markLessonFinished(lesson) {
-  const res = await trackCourseLesson(route.params.id, lesson.id, {
-    clientKey: clientKey(),
-    progress: 100,
-    status: "finished"
-  });
-  const record = res.data;
-  const index = learningRecords.value.findIndex((item) => item.lessonId === lesson.id);
+function upsertLearningRecord(record) {
+  const index = learningRecords.value.findIndex((item) => item.lessonId === record.lessonId);
   if (index >= 0) {
     learningRecords.value[index] = record;
   } else {
     learningRecords.value.push(record);
   }
+}
+
+async function openLesson(lesson) {
+  currentLesson.value = lesson;
+  videoUrl.value = "";
+  lastTrackedSecond.value = 0;
+  if (!lesson.videoFileId) {
+    Message.info("该课时暂未配置视频");
+    return;
+  }
+  const res = await getCourseLessonVideoUrl(route.params.id, lesson.id);
+  videoUrl.value = res.data?.url || res.url || "";
+}
+
+async function saveLessonProgress(lesson, progress, watchedSeconds, status = "learning") {
+  const res = await trackCourseLesson(route.params.id, lesson.id, {
+    clientKey: clientKey(),
+    progress,
+    watchedSeconds,
+    status
+  });
+  upsertLearningRecord(res.data);
+}
+
+async function handleVideoTimeUpdate(event) {
+  if (!currentLesson.value) return;
+  const video = event.target;
+  const watchedSeconds = Math.floor(video.currentTime || 0);
+  if (watchedSeconds - lastTrackedSecond.value < 10) {
+    return;
+  }
+  lastTrackedSecond.value = watchedSeconds;
+  const duration = Math.floor(video.duration || currentLesson.value.durationSeconds || 0);
+  const progress = duration > 0 ? Math.min(99, Math.round((watchedSeconds / duration) * 100)) : lessonProgress(currentLesson.value.id);
+  await saveLessonProgress(currentLesson.value, progress, watchedSeconds, "learning");
+}
+
+async function handleVideoEnded(event) {
+  if (!currentLesson.value) return;
+  const watchedSeconds = Math.floor(event.target.currentTime || currentLesson.value.durationSeconds || 0);
+  await saveLessonProgress(currentLesson.value, 100, watchedSeconds, "finished");
+  Message.success("课时学习已完成");
+}
+
+async function markLessonFinished(lesson) {
+  const res = await trackCourseLesson(route.params.id, lesson.id, {
+    clientKey: clientKey(),
+    progress: 100,
+    watchedSeconds: lesson.durationSeconds || lessonProgress(lesson.id),
+    status: "finished"
+  });
+  upsertLearningRecord(res.data);
   Message.success("学习进度已更新");
 }
 
 function openAssignment(item) {
   currentAssignment.value = item;
   assignmentForm.content = "";
+  assignmentForm.fileId = undefined;
+  uploadedAssignmentFile.value = null;
   assignmentVisible.value = true;
 }
 
+async function handleAssignmentFileChange(event) {
+  const file = event.target.files?.[0];
+  if (!file || !currentAssignment.value) return;
+  const formData = new FormData();
+  formData.append("file", file);
+  uploadingAssignmentFile.value = true;
+  try {
+    const res = await uploadCourseAssignmentFile(route.params.id, currentAssignment.value.id, formData);
+    uploadedAssignmentFile.value = res.data || res;
+    assignmentForm.fileId = uploadedAssignmentFile.value.id;
+    Message.success("附件上传成功");
+  } finally {
+    uploadingAssignmentFile.value = false;
+    event.target.value = "";
+  }
+}
+
 async function submitAssignment() {
-  if (!assignmentForm.content) {
-    Message.warning("请输入作业内容");
+  if (!assignmentForm.content && !assignmentForm.fileId) {
+    Message.warning("请输入作业内容或附件文件 ID");
     return false;
   }
   await submitCourseAssignment(route.params.id, currentAssignment.value.id, {
     clientKey: clientKey(),
-    ...assignmentForm
+    ...assignmentForm,
+    fileId: assignmentForm.fileId || 0
   });
   Message.success("作业提交成功");
   assignmentVisible.value = false;
@@ -204,5 +309,34 @@ onMounted(fetchCourse);
   display: flex;
   justify-content: space-between;
   gap: 12px;
+}
+
+.video-panel {
+  margin: 24px 0;
+  padding: 16px;
+  border: 1px solid #e5e6eb;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.section-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.lesson-video {
+  width: 100%;
+  max-height: 420px;
+  margin-top: 12px;
+  border-radius: 8px;
+  background: #000;
+}
+
+.upload-tip {
+  margin: 8px 0 0;
+  color: #165dff;
+  font-size: 13px;
 }
 </style>

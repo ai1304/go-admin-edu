@@ -19,7 +19,12 @@ func registerPublicActivityRouter(v1 *gin.RouterGroup) {
 	{
 		r.GET("", api.PublicGetPage)
 		r.GET("/:id", api.PublicGet)
+		r.GET("/:id/signup-state", api.PublicSignupState)
 		r.POST("/:id/signup", api.PublicSignup)
+		r.DELETE("/:id/signup", api.PublicCancelSignup)
+		r.POST("/:id/checkin", api.PublicCheckin)
+		r.POST("/:id/outcomes/files/upload", api.PublicUploadOutcomeFile)
+		r.POST("/:id/outcomes", api.PublicSubmitOutcome)
 	}
 }
 

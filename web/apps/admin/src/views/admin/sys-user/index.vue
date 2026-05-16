@@ -37,6 +37,21 @@
                 <a-option value="1">停用</a-option>
               </a-select>
             </a-form-item>
+            <a-form-item field="userType" label="用户类型">
+              <a-select v-model="queryForm.userType" allow-clear placeholder="请选择用户类型" :style="{ width: '160px' }">
+                <a-option v-for="item in userTypeOptions" :key="item.value" :value="item.value">{{ item.label }}</a-option>
+              </a-select>
+            </a-form-item>
+            <a-form-item field="regionId" label="区域">
+              <a-select v-model="queryForm.regionId" allow-clear placeholder="请选择区域" :style="{ width: '180px' }">
+                <a-option v-for="item in regionList" :key="item.id" :value="item.id">{{ item.name }}</a-option>
+              </a-select>
+            </a-form-item>
+            <a-form-item field="schoolId" label="学校">
+              <a-select v-model="queryForm.schoolId" allow-clear placeholder="请选择学校" :style="{ width: '180px' }">
+                <a-option v-for="item in schoolList" :key="item.id" :value="item.id">{{ item.name }}</a-option>
+              </a-select>
+            </a-form-item>
 
             <a-divider direction="vertical" :style="{ height: '30px' }" />
             <a-form-item class="form-action">
@@ -75,7 +90,10 @@
             @page-size-change="handlePageSizeChange"
           >
             <template #dept="{ record }">
-              {{ record.dept.deptName }}
+              {{ record.dept?.deptName || '-' }}
+            </template>
+            <template #userType="{ record }">
+              <a-tag>{{ userTypeText[record.userType] || record.userType || '未设置' }}</a-tag>
             </template>
             <template #status="{ record }">
               <a-switch
@@ -200,6 +218,32 @@
               </a-select>
             </a-form-item>
           </a-col>
+          <a-col :span="12">
+            <a-form-item field="userType" label="用户类型">
+              <a-select v-model="modalForm.userType" placeholder="请选择用户类型">
+                <a-option v-for="item in userTypeOptions" :key="item.value" :value="item.value">{{ item.label }}</a-option>
+              </a-select>
+            </a-form-item>
+          </a-col>
+          <a-col :span="12">
+            <a-form-item field="tenantId" label="租户 ID">
+              <a-input-number v-model="modalForm.tenantId" :min="0" placeholder="默认 0" style="width: 100%" />
+            </a-form-item>
+          </a-col>
+          <a-col :span="12">
+            <a-form-item field="regionId" label="所属区域">
+              <a-select v-model="modalForm.regionId" allow-clear placeholder="请选择所属区域">
+                <a-option v-for="item in regionList" :key="item.id" :value="item.id">{{ item.name }}</a-option>
+              </a-select>
+            </a-form-item>
+          </a-col>
+          <a-col :span="12">
+            <a-form-item field="schoolId" label="所属学校">
+              <a-select v-model="modalForm.schoolId" allow-clear placeholder="请选择所属学校">
+                <a-option v-for="item in schoolList" :key="item.id" :value="item.id">{{ item.name }}</a-option>
+              </a-select>
+            </a-form-item>
+          </a-col>
         </a-row>
         <a-form-item field="remark" label="备注">
           <a-textarea placeholder="请输入备注" allow-clear />
@@ -253,6 +297,17 @@ import { getUser, addUser, updateUser, removeUser, updateUserStatus, resetUserPw
 import { getRole } from '@/api/admin/role';
 import { getPost } from '@/api/admin/post';
 import { getDept } from '@/api/admin/sys-dept';
+import { getRegions } from '@/api/edu/region';
+import { getSchools } from '@/api/edu/school';
+
+const userTypeOptions = [
+  { label: '超级管理员', value: 'super_admin' },
+  { label: '区域管理员', value: 'region_admin' },
+  { label: '学校管理员', value: 'school_admin' },
+  { label: '教师', value: 'teacher' },
+  { label: '学生', value: 'student' }
+];
+const userTypeText = Object.fromEntries(userTypeOptions.map((item) => [item.value, item.label]));
 
 // Akiraka 20230210 删除数据
 const deleteData = ref([])
@@ -270,7 +325,7 @@ const { proxy } = getCurrentInstance();
 // Query
 const { queryForm, handleQuery, handleResetQuery } = useQueryData();
 // ApiInfo
-const { currentPage, getSysPostInfo, getSysRoleInfo, getSysDeptTreeInfo, getSysUserInfo } =
+const { currentPage, getSysPostInfo, getSysRoleInfo, getSysDeptTreeInfo, getSysRegionInfo, getSysSchoolInfo, getSysUserInfo } =
   useApiInfo();
 
 // Pager
@@ -296,6 +351,8 @@ const {
   treeDeptData,
   roleList,
   postList,
+  regionList,
+  schoolList,
   handlePageChange,
   handlePageSizeChange,
   handleSwitchChange,
@@ -421,11 +478,23 @@ function useApiInfo() {
     treeDeptData.value = res.data;
   };
 
+  const getSysRegionInfo = async () => {
+    const res = await getRegions({ pageIndex: 1, pageSize: 1000 });
+    regionList.value = res.data?.list || res.data || [];
+  };
+
+  const getSysSchoolInfo = async () => {
+    const res = await getSchools({ pageIndex: 1, pageSize: 1000 });
+    schoolList.value = res.data?.list || res.data || [];
+  };
+
   return {
     currentPage,
     getSysPostInfo,
     getSysRoleInfo,
     getSysDeptTreeInfo,
+    getSysRegionInfo,
+    getSysSchoolInfo,
     getSysUserInfo,
   };
 }
@@ -435,6 +504,8 @@ function useTableList() {
   const treeDeptData = ref();
   const roleList = ref([]);
   const postList = ref([]);
+  const regionList = ref([]);
+  const schoolList = ref([]);
 
   // Table columns
   const columns = [
@@ -454,6 +525,19 @@ function useTableList() {
       title: '部门',
       dataIndex: 'deptName',
       slotName: 'dept',
+    },
+    {
+      title: '用户类型',
+      dataIndex: 'userType',
+      slotName: 'userType',
+    },
+    {
+      title: '区域 ID',
+      dataIndex: 'regionId',
+    },
+    {
+      title: '学校 ID',
+      dataIndex: 'schoolId',
     },
     {
       title: '手机号',
@@ -519,6 +603,8 @@ function useTableList() {
     treeDeptData,
     roleList,
     postList,
+    regionList,
+    schoolList,
     columns,
     tableData,
     handlePageChange,
@@ -532,7 +618,7 @@ function useModalOperate() {
   const modalTitle = ref('默认标题');
 
   // Form
-  const modalForm = reactive({ status: '2' });
+  const modalForm = reactive({ status: '2', tenantId: 0, regionId: undefined, schoolId: undefined, userType: 'teacher' });
 
   // AddRules
   const rules = {
@@ -545,6 +631,7 @@ function useModalOperate() {
     ],
     username: [{ required: true, message: '请输入用户名称' }],
     password: [{ required: true, message: '请输入用户密码' }],
+    userType: [{ required: true, message: '请选择用户类型' }],
   };
 
   // Modal 取消后重置表单
@@ -556,6 +643,7 @@ function useModalOperate() {
 
   // 新增用户
   const handleAdd = () => {
+    Object.assign(modalForm, { status: '2', tenantId: 0, regionId: undefined, schoolId: undefined, userType: 'teacher' });
     modalVisible.value = true;
     modalTitle.value = '新增用户';
   };
@@ -621,6 +709,8 @@ onMounted(() => {
   getSysDeptTreeInfo();
   getSysRoleInfo();
   getSysPostInfo();
+  getSysRegionInfo();
+  getSysSchoolInfo();
 });
 </script>
 

@@ -20,6 +20,7 @@ type EduActivitySignup struct {
 	BaseModel
 	ActivityId int    `json:"activityId" gorm:"index;comment:活动ID"`
 	UserId     int    `json:"userId" gorm:"index;comment:用户ID"`
+	ClientKey  string `json:"clientKey" gorm:"size:128;index;comment:访客标识"`
 	Name       string `json:"name" gorm:"size:128;comment:报名姓名"`
 	Phone      string `json:"phone" gorm:"size:32;comment:电话"`
 	Status     string `json:"status" gorm:"size:32;default:signed;comment:状态"`
@@ -33,6 +34,7 @@ type EduActivityCheckin struct {
 	BaseModel
 	ActivityId int    `json:"activityId" gorm:"index;comment:活动ID"`
 	UserId     int    `json:"userId" gorm:"index;comment:用户ID"`
+	ClientKey  string `json:"clientKey" gorm:"size:128;index;comment:访客标识"`
 	CheckinAt  string `json:"checkinAt" gorm:"size:32;comment:签到时间"`
 	Status     string `json:"status" gorm:"size:32;default:checked;comment:状态"`
 }
@@ -44,6 +46,7 @@ func (*EduActivityCheckin) TableName() string {
 type EduActivityOutcome struct {
 	BaseModel
 	ActivityId int    `json:"activityId" gorm:"index;comment:活动ID"`
+	ClientKey  string `json:"clientKey" gorm:"size:128;index;comment:访客标识"`
 	Title      string `json:"title" gorm:"size:255;not null;comment:成果标题"`
 	Content    string `json:"content" gorm:"type:text;comment:成果内容"`
 	FileId     int    `json:"fileId" gorm:"index;comment:附件文件ID"`

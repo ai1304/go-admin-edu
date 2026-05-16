@@ -453,6 +453,10 @@ func (e SysUser) GetInfo(c *gin.Context) {
 	mp["userName"] = sysUser.Username
 	mp["userId"] = sysUser.UserId
 	mp["deptId"] = sysUser.DeptId
+	mp["tenantId"] = sysUser.TenantId
+	mp["regionId"] = sysUser.RegionId
+	mp["schoolId"] = sysUser.SchoolId
+	mp["userType"] = sysUser.UserType
 	mp["name"] = sysUser.NickName
 	mp["code"] = 200
 	e.OK(mp, "")

@@ -2,6 +2,7 @@ package apis
 
 import (
 	"go-admin/app/edu/models"
+	edusearch "go-admin/app/edu/search"
 	"go-admin/common/dto"
 	"go-admin/common/objectstorage"
 	"time"
@@ -63,6 +64,23 @@ type publicResourceDTO struct {
 	TagIds   []int                   `json:"tagIds"`
 	Tags     []models.EduResourceTag `json:"tags"`
 	CoverURL string                  `json:"coverUrl"`
+}
+
+func toSearchResourceQuery(req resourceQuery) edusearch.ResourceQuery {
+	return edusearch.ResourceQuery{
+		Keyword:          req.Keyword,
+		Status:           req.Status,
+		Sort:             req.Sort,
+		TagId:            req.TagId,
+		SchoolId:         req.SchoolId,
+		StageCategoryId:  req.StageCategoryId,
+		DisabilityTypeId: req.DisabilityTypeId,
+		ResourceTypeId:   req.ResourceTypeId,
+		AbilityDomainId:  req.AbilityDomainId,
+		TopicCategoryId:  req.TopicCategoryId,
+		PageIndex:        req.GetPageIndex(),
+		PageSize:         req.GetPageSize(),
+	}
 }
 
 func applyResourceFilters(db *gorm.DB, req resourceQuery) *gorm.DB {
@@ -226,7 +244,7 @@ func (e EduResource) GetPage(c *gin.Context) {
 	}
 	_ = c.ShouldBindQuery(&req)
 	list := make([]models.EduResource, 0)
-	db := applyResourceFilters(e.Orm.Model(&models.EduResource{}), req)
+	db := applyEduUserScope(c, applyResourceFilters(e.Orm.Model(&models.EduResource{}), req))
 	var count int64
 	if err := db.Count(&count).Error; err != nil {
 		e.Error(500, err, "query failed")
@@ -247,18 +265,17 @@ func (e EduResource) PublicGetPage(c *gin.Context) {
 	}
 	_ = c.ShouldBindQuery(&req)
 	req.Status = models.ResourceStatusPublished
-	list := make([]models.EduResource, 0)
-	db := applyResourceFilters(e.Orm.Model(&models.EduResource{}), req)
-	var count int64
-	if err := db.Count(&count).Error; err != nil {
+	searcher := edusearch.NewMySQLSearcher(e.Orm)
+	result, err := searcher.SearchResources(toSearchResourceQuery(req))
+	if err != nil {
 		e.Error(500, err, "query failed")
 		return
 	}
-	if err := db.Order(resourceOrder(req.Sort)).Limit(req.GetPageSize()).Offset((req.GetPageIndex() - 1) * req.GetPageSize()).Find(&list).Error; err != nil {
-		e.Error(500, err, "query failed")
-		return
-	}
-	e.PageOK(e.toPublicResources(c, list), int(count), req.GetPageIndex(), req.GetPageSize(), "query success")
+	e.PageOK(e.toPublicResources(c, result.List), int(result.Count), req.GetPageIndex(), req.GetPageSize(), "query success")
+}
+
+func (e EduResource) PublicSearch(c *gin.Context) {
+	e.PublicGetPage(c)
 }
 
 func (e EduResource) Get(c *gin.Context) {
@@ -354,6 +371,29 @@ func (e EduResource) Delete(c *gin.Context) {
 	}
 	_ = e.Orm.Where("resource_id in ?", req.Ids).Delete(&models.EduResourceTagRelation{}).Error
 	e.OK(req.Ids, "delete success")
+}
+
+func (e EduResource) ReindexSearch(c *gin.Context) {
+	if err := e.MakeContext(c).MakeOrm().Errors; err != nil {
+		e.Error(500, err, err.Error())
+		return
+	}
+	var total int64
+	var published int64
+	if err := e.Orm.Model(&models.EduResource{}).Count(&total).Error; err != nil {
+		e.Error(500, err, "count resource failed")
+		return
+	}
+	if err := e.Orm.Model(&models.EduResource{}).Where("status = ?", models.ResourceStatusPublished).Count(&published).Error; err != nil {
+		e.Error(500, err, "count resource failed")
+		return
+	}
+	e.OK(gin.H{
+		"engine":    "mysql",
+		"total":     total,
+		"published": published,
+		"synced":    published,
+	}, "search index synced")
 }
 
 func (e EduResource) SubmitReview(c *gin.Context) {

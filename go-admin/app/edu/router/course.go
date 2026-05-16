@@ -20,7 +20,9 @@ func registerPublicCourseRouter(v1 *gin.RouterGroup) {
 		r.GET("", api.PublicGetPage)
 		r.GET("/:id/assignments", api.PublicGetAssignments)
 		r.GET("/:id/learning-records", api.PublicGetLearningRecords)
+		r.GET("/:id/lessons/:lessonId/video-url", api.PublicLessonVideoURL)
 		r.POST("/:id/lessons/:lessonId/learning-records", api.PublicTrackLearning)
+		r.POST("/:id/assignments/:assignmentId/files/upload", api.PublicUploadAssignmentFile)
 		r.POST("/:id/assignments/:assignmentId/submissions", api.PublicSubmitAssignment)
 		r.GET("/:id", api.PublicGet)
 	}
@@ -50,6 +52,7 @@ func registerCourseRouter(v1 *gin.RouterGroup, authMiddleware *jwt.GinJWTMiddlew
 		r.GET("/:id/assignments/:assignmentId/submissions", api.GetAssignmentSubmissions)
 		r.POST("/:id/assignments/:assignmentId/submissions", api.InsertAssignmentSubmission)
 		r.PUT("/:id/assignments/:assignmentId/submissions/:submissionId", api.UpdateAssignmentSubmission)
+		r.GET("/:id/assignments/:assignmentId/submissions/:submissionId/file-url", api.GetAssignmentSubmissionFileURL)
 		r.DELETE("/:id/assignments/:assignmentId/submissions", api.DeleteAssignmentSubmissions)
 		r.GET("/:id/learning-records", api.GetLearningRecords)
 		r.POST("/:id/learning-records", api.InsertLearningRecord)

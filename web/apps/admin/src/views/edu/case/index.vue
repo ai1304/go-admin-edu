@@ -142,6 +142,39 @@
             </a-table>
           </a-space>
         </a-tab-pane>
+        <a-tab-pane key="attachments" title="案例附件">
+          <a-space direction="vertical" fill>
+            <a-space>
+              <a-button type="primary" status="success" @click="triggerAttachmentUpload">上传附件</a-button>
+              <a-button @click="openAttachmentCreate">手动关联文件</a-button>
+            </a-space>
+            <a-table :columns="attachmentColumns" :data="attachmentList" :pagination="false" row-key="id">
+              <template #status="{ record }">
+                <a-tag :color="record.status === 1 ? 'green' : 'gray'">{{ record.status === 1 ? '启用' : '停用' }}</a-tag>
+              </template>
+              <template #operations="{ record }">
+                <a-space>
+                  <a-button type="text" size="small" @click="handleAttachmentOpen(record)">打开</a-button>
+                  <a-button type="text" status="danger" size="small" @click="handleAttachmentDelete(record)">删除</a-button>
+                </a-space>
+              </template>
+            </a-table>
+          </a-space>
+        </a-tab-pane>
+        <a-tab-pane key="reviews" title="案例审核">
+          <a-space direction="vertical" fill>
+            <a-space>
+              <a-button type="primary" status="warning" @click="handleSubmitReview">提交审核</a-button>
+              <a-button type="primary" status="success" @click="openReviewAction('approve')">审核通过</a-button>
+              <a-button status="danger" @click="openReviewAction('reject')">审核驳回</a-button>
+            </a-space>
+            <a-table :columns="reviewColumns" :data="reviewList" :pagination="false" row-key="id">
+              <template #action="{ record }">{{ reviewActionText[record.action] || record.action }}</template>
+              <template #beforeStatus="{ record }">{{ statusText[record.beforeStatus] || record.beforeStatus }}</template>
+              <template #afterStatus="{ record }">{{ statusText[record.afterStatus] || record.afterStatus }}</template>
+            </a-table>
+          </a-space>
+        </a-tab-pane>
         <a-tab-pane key="authorizations" title="访问授权">
           <a-space direction="vertical" fill>
             <a-form :model="authorizationQuery" layout="inline">
@@ -204,6 +237,7 @@
                 <a-space>
                   <a-button type="primary" @click="searchAccessLogs">查询</a-button>
                   <a-button @click="resetAccessLogQuery">重置</a-button>
+                  <a-button @click="handleAccessLogExport">导出</a-button>
                 </a-space>
               </a-form-item>
             </a-form>
@@ -337,6 +371,36 @@
         </a-row>
       </a-form>
     </a-modal>
+
+    <a-modal v-model:visible="attachmentVisible" title="关联案例附件" width="620px" @before-ok="handleAttachmentSave">
+      <a-form :model="attachmentModel" layout="vertical">
+        <a-form-item field="title" label="附件标题" required>
+          <a-input v-model="attachmentModel.title" placeholder="请输入附件标题" />
+        </a-form-item>
+        <a-form-item field="fileId" label="文件 ID" required>
+          <a-input-number v-model="attachmentModel.fileId" placeholder="请输入已上传文件 ID" style="width: 100%" />
+        </a-form-item>
+        <a-form-item field="status" label="状态">
+          <a-select v-model="attachmentModel.status">
+            <a-option :value="1">启用</a-option>
+            <a-option :value="0">停用</a-option>
+          </a-select>
+        </a-form-item>
+        <a-form-item field="remark" label="备注">
+          <a-textarea v-model="attachmentModel.remark" :auto-size="{ minRows: 3, maxRows: 5 }" placeholder="请输入附件说明" />
+        </a-form-item>
+      </a-form>
+    </a-modal>
+
+    <a-modal v-model:visible="reviewVisible" :title="reviewModel.action === 'approve' ? '审核通过' : '审核驳回'" width="560px" @before-ok="handleReviewSave">
+      <a-form :model="reviewModel" layout="vertical">
+        <a-form-item field="comment" label="审核意见">
+          <a-textarea v-model="reviewModel.comment" :auto-size="{ minRows: 4, maxRows: 8 }" placeholder="请输入审核意见" />
+        </a-form-item>
+      </a-form>
+    </a-modal>
+
+    <input ref="attachmentFileInput" class="hidden-input" type="file" @change="handleAttachmentFileChange" />
   </div>
 </template>
 
@@ -346,30 +410,40 @@ import { onMounted, reactive, ref } from 'vue';
 import {
   addCase,
   addCaseAssessment,
+  addCaseAttachment,
   addCaseAuthorization,
   addCaseIep,
   addCaseIntervention,
+  exportCaseAccessLogs,
   getCaseAccessLogs,
   getCaseAssessments,
+  getCaseAttachmentFileUrl,
+  getCaseAttachments,
   getCaseAuthorizations,
   getCaseIeps,
   getCaseInterventions,
+  getCaseReviews,
   getCases,
   removeCaseAssessments,
+  removeCaseAttachments,
   removeCaseAuthorizations,
   removeCaseIeps,
   removeCaseInterventions,
   removeCases,
+  reviewCase,
+  submitCaseReview,
   updateCase,
   updateCaseAssessment,
   updateCaseAuthorization,
   updateCaseIep,
   updateCaseIntervention
 } from '@/api/edu/case';
+import { uploadResourceFile } from '@/api/edu/resource';
 
 const statusOptions = [
   { label: '草稿', value: 'draft' },
   { label: '审核中', value: 'reviewing' },
+  { label: '已驳回', value: 'rejected' },
   { label: '已归档', value: 'archived' }
 ];
 const subStatusOptions = [
@@ -383,7 +457,7 @@ const interventionStatusOptions = [
   { label: '已完成', value: 'finished' }
 ];
 const statusText = Object.fromEntries(statusOptions.map((item) => [item.value, item.label]));
-const statusColor = { draft: 'gray', reviewing: 'orange', archived: 'blue' };
+const statusColor = { draft: 'gray', reviewing: 'orange', rejected: 'red', archived: 'blue' };
 const subStatusText = Object.fromEntries(subStatusOptions.map((item) => [item.value, item.label]));
 const subStatusColor = { draft: 'gray', active: 'green', finished: 'blue' };
 const interventionStatusText = Object.fromEntries(interventionStatusOptions.map((item) => [item.value, item.label]));
@@ -397,6 +471,8 @@ const iepVisible = ref(false);
 const assessmentVisible = ref(false);
 const interventionVisible = ref(false);
 const authorizationVisible = ref(false);
+const attachmentVisible = ref(false);
+const reviewVisible = ref(false);
 const manageDesensitize = ref(false);
 const currentCase = ref(null);
 const formModel = reactive(defaultForm());
@@ -404,11 +480,17 @@ const iepModel = reactive(defaultIepForm());
 const assessmentModel = reactive(defaultAssessmentForm());
 const interventionModel = reactive(defaultInterventionForm());
 const authorizationModel = reactive(defaultAuthorizationForm());
+const attachmentModel = reactive(defaultAttachmentForm());
+const reviewModel = reactive(defaultReviewForm());
+const attachmentFileInput = ref(null);
 const iepList = ref([]);
 const assessmentList = ref([]);
 const interventionList = ref([]);
 const authorizationList = ref([]);
+const attachmentList = ref([]);
+const reviewList = ref([]);
 const accessLogList = ref([]);
+const reviewActionText = { submit: '提交审核', approve: '审核通过', reject: '审核驳回' };
 const accessActionText = {
   view_detail: '查看详情',
   view_ieps: '查看 IEP',
@@ -418,6 +500,7 @@ const accessActionText = {
   edit_case_denied: '拒绝编辑案例',
   delete_case_denied: '拒绝删除案例',
   view_access_logs_denied: '拒绝查看日志',
+  export_access_logs_denied: '拒绝导出日志',
   view_authorizations_denied: '拒绝查看授权',
   add_authorization_denied: '拒绝新增授权',
   update_authorization_denied: '拒绝编辑授权',
@@ -433,7 +516,14 @@ const accessActionText = {
   view_interventions_denied: '拒绝查看干预',
   add_intervention_denied: '拒绝新增干预',
   update_intervention_denied: '拒绝编辑干预',
-  delete_interventions_denied: '拒绝删除干预'
+  delete_interventions_denied: '拒绝删除干预',
+  submit_case_review_denied: '拒绝提交审核',
+  review_case_denied: '拒绝审核案例',
+  view_case_reviews_denied: '拒绝查看审核记录',
+  view_case_attachments_denied: '拒绝查看案例附件',
+  add_case_attachment_denied: '拒绝新增案例附件',
+  delete_case_attachments_denied: '拒绝删除案例附件',
+  view_case_attachment_file_denied: '拒绝打开案例附件'
 };
 const accessActionOptions = Object.entries(accessActionText).map(([value, label]) => ({ value, label }));
 const accessLogQuery = reactive({ action: '', userId: undefined, keyword: '', pageIndex: 1, pageSize: 10 });
@@ -479,6 +569,20 @@ const interventionColumns = [
   { title: '结束日期', dataIndex: 'endDate', width: 120 },
   { title: '状态', slotName: 'status', width: 100 },
   { title: '操作', slotName: 'operations', width: 150 }
+];
+const attachmentColumns = [
+  { title: '附件标题', dataIndex: 'title', ellipsis: true, tooltip: true },
+  { title: '文件 ID', dataIndex: 'fileId', width: 100 },
+  { title: '状态', slotName: 'status', width: 90 },
+  { title: '备注', dataIndex: 'remark', ellipsis: true, tooltip: true },
+  { title: '操作', slotName: 'operations', width: 130 }
+];
+const reviewColumns = [
+  { title: '动作', slotName: 'action', width: 120 },
+  { title: '审核前状态', slotName: 'beforeStatus', width: 120 },
+  { title: '审核后状态', slotName: 'afterStatus', width: 120 },
+  { title: '审核意见', dataIndex: 'comment', ellipsis: true, tooltip: true },
+  { title: '时间', dataIndex: 'createdAt', width: 170 }
 ];
 const authorizationColumns = [
   { title: '用户 ID', dataIndex: 'userId', width: 100 },
@@ -526,6 +630,14 @@ function defaultInterventionForm() {
 
 function defaultAuthorizationForm() {
   return { id: undefined, userId: undefined, scope: 'view', startAt: '', endAt: '', status: 'active', remark: '' };
+}
+
+function defaultAttachmentForm() {
+  return { title: '', fileId: undefined, remark: '', status: 1 };
+}
+
+function defaultReviewForm() {
+  return { action: 'approve', comment: '' };
 }
 
 function assignForm(data = {}) {
@@ -604,18 +716,34 @@ async function openManage(record) {
 async function fetchManageData() {
   if (!currentCase.value?.id) return;
   const sensitiveParams = { desensitize: manageDesensitize.value };
-  const [iepsRes, assessmentsRes, interventionsRes, authorizationsRes, accessLogsRes] = await Promise.all([
+  const [iepsRes, assessmentsRes, interventionsRes, attachmentsRes, reviewsRes, authorizationsRes, accessLogsRes] = await Promise.all([
     getCaseIeps(currentCase.value.id, sensitiveParams),
     getCaseAssessments(currentCase.value.id, sensitiveParams),
     getCaseInterventions(currentCase.value.id, sensitiveParams),
+    getCaseAttachments(currentCase.value.id),
+    getCaseReviews(currentCase.value.id),
     getCaseAuthorizations(currentCase.value.id, authorizationQuery),
     getCaseAccessLogs(currentCase.value.id, accessLogQuery)
   ]);
   iepList.value = iepsRes.data || [];
   assessmentList.value = assessmentsRes.data || [];
   interventionList.value = interventionsRes.data || [];
+  attachmentList.value = attachmentsRes.data || [];
+  reviewList.value = reviewsRes.data || [];
   setAuthorizations(authorizationsRes);
   setAccessLogs(accessLogsRes);
+}
+
+async function fetchAttachments() {
+  if (!currentCase.value?.id) return;
+  const res = await getCaseAttachments(currentCase.value.id);
+  attachmentList.value = res.data || [];
+}
+
+async function fetchReviews() {
+  if (!currentCase.value?.id) return;
+  const res = await getCaseReviews(currentCase.value.id);
+  reviewList.value = res.data || [];
 }
 
 async function fetchAccessLogs() {
@@ -652,6 +780,19 @@ function resetAccessLogQuery(shouldFetch = true) {
   if (shouldFetch) {
     fetchAccessLogs();
   }
+}
+
+async function handleAccessLogExport() {
+  if (!currentCase.value?.id) return;
+  const blob = await exportCaseAccessLogs(currentCase.value.id, accessLogQuery);
+  const url = window.URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `case-${currentCase.value.id}-access-logs.csv`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  window.URL.revokeObjectURL(url);
 }
 
 async function fetchAuthorizations() {
@@ -698,6 +839,90 @@ function openAuthorizationCreate() {
 function openAuthorizationEdit(record) {
   Object.assign(authorizationModel, defaultAuthorizationForm(), record);
   authorizationVisible.value = true;
+}
+
+function openAttachmentCreate() {
+  Object.assign(attachmentModel, defaultAttachmentForm());
+  attachmentVisible.value = true;
+}
+
+async function handleAttachmentSave() {
+  if (!attachmentModel.title || !attachmentModel.fileId) {
+    Message.warning('请输入附件标题和文件 ID');
+    return false;
+  }
+  await addCaseAttachment(currentCase.value.id, { ...attachmentModel });
+  Message.success('附件关联成功');
+  attachmentVisible.value = false;
+  fetchAttachments();
+}
+
+function triggerAttachmentUpload() {
+  attachmentFileInput.value?.click();
+}
+
+async function handleAttachmentFileChange(event) {
+  const file = event.target.files?.[0];
+  if (!file || !currentCase.value?.id) return;
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('usage', 'case_attachment');
+  const res = await uploadResourceFile(formData);
+  const uploadedFile = res.data || {};
+  if (uploadedFile.id) {
+    await addCaseAttachment(currentCase.value.id, {
+      title: uploadedFile.originalName || file.name,
+      fileId: uploadedFile.id,
+      remark: '',
+      status: 1
+    });
+  }
+  event.target.value = '';
+  Message.success('附件上传成功');
+  fetchAttachments();
+}
+
+async function handleAttachmentOpen(record) {
+  const res = await getCaseAttachmentFileUrl(currentCase.value.id, record.id);
+  const fileUrl = res.data?.url;
+  if (fileUrl) {
+    window.open(fileUrl, '_blank');
+  }
+}
+
+function handleAttachmentDelete(record) {
+  Modal.confirm({
+    title: '确认删除案例附件',
+    content: `确定删除「${record.title}」吗？`,
+    async onOk() {
+      await removeCaseAttachments(currentCase.value.id, { ids: [record.id] });
+      Message.success('删除成功');
+      fetchAttachments();
+    }
+  });
+}
+
+async function handleSubmitReview() {
+  if (!currentCase.value?.id) return;
+  await submitCaseReview(currentCase.value.id);
+  Message.success('已提交审核');
+  fetchData();
+  fetchReviews();
+  currentCase.value.status = 'reviewing';
+}
+
+function openReviewAction(action) {
+  Object.assign(reviewModel, defaultReviewForm(), { action });
+  reviewVisible.value = true;
+}
+
+async function handleReviewSave() {
+  await reviewCase(currentCase.value.id, { ...reviewModel });
+  Message.success('审核处理成功');
+  reviewVisible.value = false;
+  currentCase.value.status = reviewModel.action === 'approve' ? 'archived' : 'rejected';
+  fetchData();
+  fetchReviews();
 }
 
 async function handleAuthorizationSave() {
@@ -852,5 +1077,9 @@ onMounted(fetchData);
 
 .manage-toolbar {
   margin-bottom: 12px;
+}
+
+.hidden-input {
+  display: none;
 }
 </style>

@@ -1,249 +1,110 @@
-# 特殊教育资源库平台启动与部署说明
+# 特殊教育资源库部署指南
 
-更新时间：2026-05-13
+更新时间：2026-05-16
 
-## 1. 适用范围
-
-本文档用于指导当前仓库的本地开发启动、测试环境初始化以及后续部署准备。
-
-当前仓库结构：
+本文档记录当前项目的本地启动、Docker 部署、远程服务器运行态部署，以及后续代码更新流程。当前项目包含：
 
 - 后端：`go-admin/`
 - 前端工作区：`web/`
-- 后台前端：`web/apps/admin`
-- 门户前端：`web/apps/portal`
+- 管理端前端：`web/apps/admin`
+- 门户端前端：`web/apps/portal`
+- 运行态部署配置：`deploy/docker-compose.runtime.yml`
 
-## 2. 当前部署结论
+## 1. 当前推荐部署方式
 
-当前项目已经具备本地启动、数据库初始化以及 Docker Compose 编排草案。
+当前远程服务器推荐使用“本地构建产物，服务器只运行”的方式。
 
-已具备：
+原因：
 
-- 后端 `go-admin` 可通过配置文件连接 MySQL。
-- 后端具备迁移命令，可初始化基础表和教育业务表。
-- 后台前端和门户前端已统一到 `web/` workspace。
-- 两个前端均已配置反向代理到本地后端 `http://127.0.0.1:8000`。
-- 根目录已新增 `docker-compose.yml`，包含 MySQL、Redis、MinIO、后端、后台前端、门户前端。
-- 后端已新增 Docker 专用配置：`go-admin/config/settings.docker.yml`。
-- 后端已接入 MinIO 对象存储封装和资源文件上传接口。
+- 远程服务器配置较小，直接在服务器上构建 Go / Node 镜像容易卡在依赖下载或编译阶段。
+- 本地已经能稳定完成 Go 编译和前端构建。
+- 服务器只运行 MySQL、Redis、MinIO、API 二进制和 Nginx 静态前端，部署更快、更可控。
 
-当前限制：
+当前已验证的远程服务器：
 
-- 当前机器已安装 Docker，已验证可通过 `docker compose up -d minio` 启动 MinIO。
-- Compose 仍属于开发环境配置，生产部署前需要拆分密钥、域名、HTTPS、持久化路径和备份策略。
+- 服务器 IP：`117.72.200.80`
+- 管理端端口：`18080`
+- 门户端端口：`18081`
+- API 端口：`8000`
+- MinIO API：`9000`
+- MinIO Console：`9001`
 
-## 3. 环境要求
+安全组建议放行：
 
-建议环境：
+- `18080`
+- `18081`
+- `8000`
+- `9000`
+- `9001`
 
-- Go
-- Node.js
-- pnpm 9
-- MySQL 8.x
-- Docker / Docker Compose
-- Redis
-- MinIO
+不要对公网放行 `3306` 和 `6379`，除非明确需要外部直连 MySQL / Redis。
 
-说明：
+## 2. 端口约定
 
-- `web/package.json` 指定 `packageManager` 为 `pnpm@9.0.0`。
-- 后端默认数据库类型为 MySQL。
-- 当前仓库默认本地开发端口为 `8000`、`1798`、`1799`。
-- Docker Compose 暴露端口为 `8000`、`18080`、`18081`、`3306`、`6379`、`9000`、`9001`。
-
-## 4. 端口约定
+本地开发端口：
 
 - 后端 API：`8000`
-- 后台前端：admin：`1798`
-- 门户前端：portal：`1799`
-- Docker 后台前端：admin：`18080`
-- Docker 门户前端：portal：`18081`
+- 管理端前端：`1798`
+- 门户端前端：`1799`
+
+Docker / 远程部署端口：
+
+- 后端 API：`8000`
+- 管理端前端：`18080`
+- 门户端前端：`18081`
 - MySQL：`3306`
 - Redis：`6379`
 - MinIO API：`9000`
 - MinIO Console：`9001`
 
-当前前端代理关系：
+## 3. 本地开发启动
 
-- `web/apps/admin/vite.config.js` 将 `/api/v1` 代理到 `http://127.0.0.1:8000`
-- `web/apps/portal/vite.config.js` 将 `/api/v1` 代理到 `http://127.0.0.1:8000`
-
-## 5. 数据库准备
-
-### 5.1 创建数据库
-
-先在 MySQL 中创建一个空库，例如：
-
-```sql
-CREATE DATABASE go_admin_edu DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-```
-
-### 5.2 修改后端配置
-
-编辑文件：
-
-- `go-admin/config/settings.yml`
-
-将数据库连接修改为你自己的环境，例如：
-
-```yml
-settings:
-  database:
-    driver: mysql
-    source: root:123456@tcp(127.0.0.1:3306)/go_admin_edu?charset=utf8mb4&parseTime=True&loc=Local&timeout=1000ms
-```
-
-注意：
-
-- 仓库中当前没有 `config/settings.dev.yml`。
-- 当前实际可直接使用的是 `config/settings.yml`。
-- 如需为本地、测试、生产拆分配置，建议后续新增 `settings.local.yml`、`settings.test.yml`、`settings.prod.yml`。
-
-## 6. 后端启动流程
-
-在仓库根目录执行：
+### 3.1 后端
 
 ```bash
 cd go-admin
 go mod tidy
-go build
-```
-
-### 6.1 初始化数据库
-
-首次启动前执行迁移：
-
-```bash
-./go-admin migrate -c config/settings.yml
-```
-
-如果你不想先编译，也可以直接执行：
-
-```bash
+go build ./...
 go run main.go migrate -c config/settings.yml
-```
-
-迁移会完成以下工作：
-
-- 初始化 `sys_migration` 迁移记录表
-- 初始化 go-admin 基础表结构
-- 导入基础 SQL 数据
-- 执行教育业务模块迁移
-
-教育业务迁移文件位于：
-
-- `go-admin/cmd/migrate/migration/version/2026051200010_edu_tables.go`
-
-### 6.2 启动后端服务
-
-```bash
-./go-admin server -c config/settings.yml
-```
-
-或：
-
-```bash
 go run main.go server -c config/settings.yml
 ```
 
-启动成功后，后端默认访问地址：
+默认访问：
 
 ```text
 http://127.0.0.1:8000
 ```
 
-## 7. 前端启动流程
-
-在仓库根目录执行：
+### 3.2 管理端
 
 ```bash
 cd web
 pnpm install
-```
-
-### 7.1 启动后台前端
-
-```bash
 pnpm dev:admin
 ```
 
-等价命令：
-
-```bash
-pnpm --dir apps/admin dev
-```
-
-访问地址：
+访问：
 
 ```text
 http://127.0.0.1:1798
 ```
 
-### 7.2 启动门户前端
+### 3.3 门户端
 
 ```bash
+cd web
 pnpm dev:portal
 ```
 
-等价命令：
-
-```bash
-pnpm --dir apps/portal dev
-```
-
-访问地址：
+访问：
 
 ```text
 http://127.0.0.1:1799
 ```
 
-## 8. 数据库初始化脚本说明
+## 4. 本地 Docker Compose 启动
 
-当前项目的数据库初始化不是单纯依赖一个 `.sql` 文件，而是由迁移命令统一调度。
-
-相关文件如下：
-
-基础 SQL：
-
-- `go-admin/config/db.sql`
-- `go-admin/config/db-begin-mysql.sql`
-- `go-admin/config/db-end-mysql.sql`
-- `go-admin/config/pg.sql`
-- `go-admin/config/db-sqlserver.sql`
-
-迁移入口：
-
-- `go-admin/cmd/migrate/server.go`
-- `go-admin/cmd/migrate/migration/init.go`
-
-教育业务迁移：
-
-- `go-admin/cmd/migrate/migration/version/2026051200010_edu_tables.go`
-
-因此推荐的初始化方式始终是：
-
-```bash
-./go-admin migrate -c config/settings.yml
-```
-
-而不是手工逐个执行 SQL 文件。
-
-## 8.1 Docker Compose 启动草案
-
-根目录已新增：
-
-- `docker-compose.yml`
-
-包含服务：
-
-- `mysql`
-- `redis`
-- `minio`
-- `api`
-- `admin-web`
-- `portal-web`
-
-启动命令：
+根目录提供了 `docker-compose.yml`，可用于本地 Docker 联调。
 
 ```bash
 docker compose up -d mysql redis minio
@@ -251,120 +112,341 @@ docker compose run --rm api /main migrate -c /config/settings.yml
 docker compose up -d api admin-web portal-web
 ```
 
-访问地址：
+访问：
 
-- 后端 API：`http://127.0.0.1:8000`
-- 后台前端：`http://127.0.0.1:18080`
-- 门户前端：`http://127.0.0.1:18081`
+- API：`http://127.0.0.1:8000`
+- 管理端：`http://127.0.0.1:18080`
+- 门户端：`http://127.0.0.1:18081`
 - MinIO Console：`http://127.0.0.1:9001`
 
-默认 MinIO 账号：
+MinIO 默认账号：
 
 - 用户名：`minioadmin`
 - 密码：`minioadmin`
 
+## 5. 远程服务器首次部署
+
+### 5.1 服务器准备
+
+服务器需要安装：
+
+- Docker
+- Docker Compose v2
+- Git
+
+如果服务器内存较小，建议增加 2G swap，避免 MySQL / 构建 / 解压时内存紧张。
+
+```bash
+fallocate -l 2G /swapfile || dd if=/dev/zero of=/swapfile bs=1M count=2048
+chmod 600 /swapfile
+mkswap /swapfile
+swapon /swapfile
+echo '/swapfile none swap sw 0 0' >> /etc/fstab
+```
+
+### 5.2 拉取代码
+
+```bash
+mkdir -p /opt
+git clone https://github.com/ai1304/go-admin-edu.git /opt/go-admin-edu
+cd /opt/go-admin-edu
+```
+
+如果仓库已经存在：
+
+```bash
+cd /opt/go-admin-edu
+git fetch origin main
+git reset --hard origin/main
+```
+
+### 5.3 配置 MinIO 公网地址
+
+生产或远程部署时，必须把 `publicEndpoint` 改成浏览器可访问的地址。
+
+```bash
+sed -i 's#publicEndpoint: http://localhost:9000#publicEndpoint: http://117.72.200.80:9000#' go-admin/config/settings.docker.yml
+```
+
 说明：
 
-- 当前环境已验证 MinIO 容器可启动，健康检查地址 `http://localhost:9000/minio/health/live` 返回 200。
-- 后端容器使用 `go-admin/config/settings.docker.yml`。
-- Docker 环境数据库名为 `go_admin_edu`。
+- `endpoint: minio:9000` 是容器内部访问 MinIO 的地址。
+- `publicEndpoint` 是后端生成文件访问 URL 时使用的公网地址。
+- MinIO 预签名 URL 会把 Host 纳入签名计算，不能先用容器内部地址签名再替换成公网地址，否则门户端图片可能报 `SignatureDoesNotMatch`。
 
-本地后端直连 Docker MinIO 时，`go-admin/config/settings.yml` 已配置：
+### 5.4 本地构建运行态产物
 
-- `endpoint: localhost:9000`
-- `publicEndpoint: http://localhost:9000`
-- `accessKeyID: minioadmin`
-- `accessKeySecret: minioadmin`
-- `bucketName: go-admin-edu`
+在本地项目根目录执行。
 
-注意：MinIO 预签名 URL 会把 Host 纳入签名计算。后端生成门户访问 URL 时会使用 `publicEndpoint` 重新签名，不能先用容器内地址签名后再替换成浏览器地址，否则门户访问图片/附件会出现 `SignatureDoesNotMatch`。
+构建 Linux API 二进制：
 
-## 9. 默认账号
+```powershell
+$env:GOOS='linux'
+$env:GOARCH='amd64'
+$env:CGO_ENABLED='0'
+go build -trimpath -ldflags='-s -w' -o D:\project\go-admin-edu\deploy\artifacts\api\go-admin .\go-admin
+```
 
-基础 SQL 中已包含管理员账号初始化数据。
+构建管理端和门户端：
 
-默认可尝试使用：
+```powershell
+npm.cmd --prefix web/apps/admin run build
+npm.cmd --prefix web/apps/portal run build
+```
+
+复制前端 dist 到运行态目录：
+
+```powershell
+New-Item -ItemType Directory -Force deploy\artifacts\admin | Out-Null
+New-Item -ItemType Directory -Force deploy\artifacts\portal | Out-Null
+Copy-Item -Path web\apps\admin\dist\* -Destination deploy\artifacts\admin -Recurse -Force
+Copy-Item -Path web\apps\portal\dist\* -Destination deploy\artifacts\portal -Recurse -Force
+```
+
+打包产物：
+
+```powershell
+tar -czf deploy-artifacts.tgz -C deploy artifacts
+```
+
+### 5.5 上传产物
+
+示例：
+
+```bash
+scp deploy-artifacts.tgz root@117.72.200.80:/opt/go-admin-edu/deploy-artifacts.tgz
+```
+
+服务器解压：
+
+```bash
+cd /opt/go-admin-edu
+rm -rf deploy/artifacts
+tar -xzf deploy-artifacts.tgz -C deploy
+chmod +x deploy/artifacts/api/go-admin
+```
+
+### 5.6 启动服务
+
+```bash
+cd /opt/go-admin-edu
+docker compose -p go-admin-edu -f deploy/docker-compose.runtime.yml up -d mysql redis minio
+```
+
+首次部署或有新增迁移时执行：
+
+```bash
+docker compose -p go-admin-edu -f deploy/docker-compose.runtime.yml run --rm api sh -c 'mkdir -p temp/logs && /main migrate -c /config/settings.yml'
+```
+
+启动 API、管理端、门户端：
+
+```bash
+docker compose -p go-admin-edu -f deploy/docker-compose.runtime.yml up -d api admin-web portal-web
+```
+
+查看状态：
+
+```bash
+docker compose -p go-admin-edu -f deploy/docker-compose.runtime.yml ps
+```
+
+### 5.7 健康检查
+
+服务器本机检查：
+
+```bash
+curl -fsS http://127.0.0.1:9000/minio/health/live
+curl -fsS http://127.0.0.1:8000/api/v1/app-config
+curl -fsSI http://127.0.0.1:18080
+curl -fsSI http://127.0.0.1:18081
+```
+
+公网检查：
+
+```text
+http://117.72.200.80:18080
+http://117.72.200.80:18081
+http://117.72.200.80:8000/api/v1/app-config
+http://117.72.200.80:9001
+```
+
+如果服务器本机检查通过，但公网访问超时，优先检查云服务器安全组。
+
+## 6. 后续更新代码怎么做
+
+后续更新时，不需要每次重装 Docker / MySQL / MinIO。按变更范围选择操作即可。
+
+### 6.1 后端代码有变化
+
+本地重新构建 Linux 二进制：
+
+```powershell
+$env:GOOS='linux'
+$env:GOARCH='amd64'
+$env:CGO_ENABLED='0'
+go build -trimpath -ldflags='-s -w' -o D:\project\go-admin-edu\deploy\artifacts\api\go-admin .\go-admin
+```
+
+上传并替换服务器文件：
+
+```bash
+scp deploy/artifacts/api/go-admin root@117.72.200.80:/opt/go-admin-edu/deploy/artifacts/api/go-admin
+ssh root@117.72.200.80 'chmod +x /opt/go-admin-edu/deploy/artifacts/api/go-admin'
+```
+
+如果后端新增了迁移文件，先执行迁移：
+
+```bash
+ssh root@117.72.200.80 "cd /opt/go-admin-edu && docker compose -p go-admin-edu -f deploy/docker-compose.runtime.yml run --rm api sh -c 'mkdir -p temp/logs && /main migrate -c /config/settings.yml'"
+```
+
+重启 API：
+
+```bash
+ssh root@117.72.200.80 "cd /opt/go-admin-edu && docker compose -p go-admin-edu -f deploy/docker-compose.runtime.yml up -d api"
+```
+
+### 6.2 管理端前端有变化
+
+本地构建：
+
+```powershell
+npm.cmd --prefix web/apps/admin run build
+```
+
+上传新的 dist：
+
+```bash
+scp -r web/apps/admin/dist/* root@117.72.200.80:/opt/go-admin-edu/deploy/artifacts/admin/
+```
+
+重启管理端 Nginx：
+
+```bash
+ssh root@117.72.200.80 "cd /opt/go-admin-edu && docker compose -p go-admin-edu -f deploy/docker-compose.runtime.yml restart admin-web"
+```
+
+### 6.3 门户端前端有变化
+
+本地构建：
+
+```powershell
+npm.cmd --prefix web/apps/portal run build
+```
+
+上传新的 dist：
+
+```bash
+scp -r web/apps/portal/dist/* root@117.72.200.80:/opt/go-admin-edu/deploy/artifacts/portal/
+```
+
+重启门户端 Nginx：
+
+```bash
+ssh root@117.72.200.80 "cd /opt/go-admin-edu && docker compose -p go-admin-edu -f deploy/docker-compose.runtime.yml restart portal-web"
+```
+
+### 6.4 配置文件或部署文件有变化
+
+先推送代码，再在服务器拉取：
+
+```bash
+git push origin main
+ssh root@117.72.200.80 "cd /opt/go-admin-edu && git fetch origin main && git reset --hard origin/main"
+```
+
+重新设置 MinIO 公网地址：
+
+```bash
+ssh root@117.72.200.80 "cd /opt/go-admin-edu && sed -i 's#publicEndpoint: http://localhost:9000#publicEndpoint: http://117.72.200.80:9000#' go-admin/config/settings.docker.yml"
+```
+
+重启相关服务：
+
+```bash
+ssh root@117.72.200.80 "cd /opt/go-admin-edu && docker compose -p go-admin-edu -f deploy/docker-compose.runtime.yml up -d"
+```
+
+### 6.5 全量更新
+
+如果后端、管理端、门户端都有变化，推荐重新打包并上传：
+
+```powershell
+tar -czf deploy-artifacts.tgz -C deploy artifacts
+scp deploy-artifacts.tgz root@117.72.200.80:/opt/go-admin-edu/deploy-artifacts.tgz
+```
+
+服务器执行：
+
+```bash
+cd /opt/go-admin-edu
+git fetch origin main
+git reset --hard origin/main
+sed -i 's#publicEndpoint: http://localhost:9000#publicEndpoint: http://117.72.200.80:9000#' go-admin/config/settings.docker.yml
+rm -rf deploy/artifacts
+tar -xzf deploy-artifacts.tgz -C deploy
+chmod +x deploy/artifacts/api/go-admin
+docker compose -p go-admin-edu -f deploy/docker-compose.runtime.yml run --rm api sh -c 'mkdir -p temp/logs && /main migrate -c /config/settings.yml'
+docker compose -p go-admin-edu -f deploy/docker-compose.runtime.yml up -d api admin-web portal-web
+```
+
+## 7. 默认账号
+
+管理端默认账号：
 
 - 用户名：`admin`
 - 密码：`123456`
 
-说明：
+如果登录失败，以数据库 `sys_user` 表中的实际数据为准。
 
-- 该账号来自当前仓库内置初始化数据和 go-admin 默认演示账号约定。
-- 若后续初始化脚本被修改，请以实际数据库内容为准。
+## 8. 常见问题
 
-## 10. 本地启动顺序建议
+### 8.1 服务器内部正常，公网访问超时
 
-推荐按以下顺序启动：
+优先检查云服务器安全组是否放行：
 
-1. 启动 MySQL，并创建数据库。
-2. 修改 `go-admin/config/settings.yml` 中的数据库连接。
-3. 执行 `go-admin migrate -c config/settings.yml` 完成初始化。
-4. 启动后端 `go-admin server -c config/settings.yml`。
-5. 在 `web/` 下执行 `pnpm install`。
-6. 启动后台前端 `pnpm dev:admin`。
-7. 启动门户前端 `pnpm dev:portal`。
+- `18080`
+- `18081`
+- `8000`
+- `9000`
+- `9001`
 
-## 11. 启动验证
+服务器内部可用以下命令确认服务是否监听：
 
-建议最少做以下验证：
+```bash
+ss -lntp | grep -E ':8000|:18080|:18081|:9000|:9001'
+```
 
-### 11.1 后端验证
+### 8.2 门户端图片显示 `SignatureDoesNotMatch`
 
-- 访问 `http://127.0.0.1:8000`
-- 观察后端控制台是否报数据库连接错误
-- 确认迁移后数据库已生成基础表和教育业务表
+检查 `go-admin/config/settings.docker.yml`：
 
-### 11.2 后台前端验证
+```yml
+extend:
+  storage:
+    endpoint: minio:9000
+    publicEndpoint: http://117.72.200.80:9000
+```
 
-- 打开 `http://127.0.0.1:1798`
-- 尝试使用 `admin / 123456` 登录
-- 确认接口请求已成功代理到后端
+`publicEndpoint` 必须是浏览器访问图片时使用的地址。
 
-### 11.3 门户前端验证
+### 8.3 迁移找不到 `config/db-begin-mysql.sql`
 
-- 打开 `http://127.0.0.1:1799`
-- 确认资源列表和详情页接口能够正常返回
+运行态 compose 必须满足：
 
-## 12. 常见问题
+- API 容器 `working_dir: /app`
+- 挂载 `../go-admin/config:/app/config:ro`
 
-### 12.1 `settings.dev.yml` 不存在
+当前 `deploy/docker-compose.runtime.yml` 已包含这些配置。
 
-原因：
+### 8.4 单个远程命令超过 1 分钟没有进度
 
-- 当前仓库并没有这个文件，历史文档里提到的是上游项目常见命名。
+建议中断后分步执行：
 
-处理方式：
+1. `docker compose ps`
+2. `docker ps -a`
+3. `docker logs go-admin-edu-api --tail=100`
+4. 只重启单个服务，例如 `docker compose ... restart api`
 
-- 直接使用 `config/settings.yml`
-
-### 12.2 Docker Compose 尚未在当前机器验证
-
-原因：
-
-- 当前机器无法识别 `docker` 命令。
-
-处理方式：
-
-- 在已安装 Docker Desktop 或 Docker Engine 的机器上执行 `docker compose config`。
-- 再按第 8.1 节执行启动和迁移。
-
-### 12.3 迁移成功但前端仍无法访问数据
-
-优先检查：
-
-- 后端是否已启动在 `8000`
-- 前端代理目标是否仍为 `http://127.0.0.1:8000`
-- 浏览器接口请求是否报 401、404、500
-- 数据库连接串中的库名、账号、密码是否正确
-
-## 13. 后续部署建议
-
-为了让该项目具备可重复部署能力，建议下一步补齐以下内容：
-
-1. 在有 Docker 的机器上验证根目录 `docker-compose.yml`。
-2. 增加环境拆分配置：本地、测试、生产。
-3. 为前端增加 `.env` 配置，而不是将后端地址完全写死在 Vite 配置中。
-4. 为数据库初始化增加部署脚本或 Makefile 命令，减少人工步骤。
-5. 增加反向代理配置示例，例如 Nginx。
-
+不要在小内存服务器上反复执行完整镜像构建，优先使用本文的运行态产物部署流程。

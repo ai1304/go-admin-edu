@@ -17,6 +17,10 @@ type SysUserGetPageReq struct {
 	Sex            string `form:"sex" search:"type:exact;column:sex;table:sys_user" comment:"性别"`
 	Email          string `form:"email" search:"type:contains;column:email;table:sys_user" comment:"邮箱"`
 	PostId         string `form:"postId" search:"type:exact;column:post_id;table:sys_user" comment:"岗位"`
+	TenantId       string `form:"tenantId" search:"type:exact;column:tenant_id;table:sys_user" comment:"租户ID"`
+	RegionId       string `form:"regionId" search:"type:exact;column:region_id;table:sys_user" comment:"区域ID"`
+	SchoolId       string `form:"schoolId" search:"type:exact;column:school_id;table:sys_user" comment:"学校ID"`
+	UserType       string `form:"userType" search:"type:exact;column:user_type;table:sys_user" comment:"用户类型"`
 	Status         string `form:"status" search:"type:exact;column:status;table:sys_user" comment:"状态"`
 	DeptJoin       `search:"type:left;on:dept_id:dept_id;table:sys_user;join:sys_dept"`
 	SysUserOrder
@@ -100,6 +104,10 @@ type SysUserInsertReq struct {
 	Email    string `json:"email" comment:"邮箱" vd:"len($)>0,email"`
 	DeptId   int    `json:"deptId" comment:"部门" vd:"$>0"`
 	PostId   int    `json:"postId" comment:"岗位"`
+	TenantId int    `json:"tenantId" comment:"租户ID"`
+	RegionId int    `json:"regionId" comment:"区域ID"`
+	SchoolId int    `json:"schoolId" comment:"学校ID"`
+	UserType string `json:"userType" comment:"用户类型"`
 	Remark   string `json:"remark" comment:"备注"`
 	Status   string `json:"status" comment:"状态" vd:"len($)>0" default:"1"`
 	common.ControlBy
@@ -119,6 +127,10 @@ func (s *SysUserInsertReq) Generate(model *models.SysUser) {
 	model.Email = s.Email
 	model.DeptId = s.DeptId
 	model.PostId = s.PostId
+	model.TenantId = s.TenantId
+	model.RegionId = s.RegionId
+	model.SchoolId = s.SchoolId
+	model.UserType = s.UserType
 	model.Remark = s.Remark
 	model.Status = s.Status
 	model.CreateBy = s.CreateBy
@@ -139,6 +151,10 @@ type SysUserUpdateReq struct {
 	Email    string `json:"email" comment:"邮箱" vd:"len($)>0,email"`
 	DeptId   int    `json:"deptId" comment:"部门" vd:"$>0"`
 	PostId   int    `json:"postId" comment:"岗位"`
+	TenantId int    `json:"tenantId" comment:"租户ID"`
+	RegionId int    `json:"regionId" comment:"区域ID"`
+	SchoolId int    `json:"schoolId" comment:"学校ID"`
+	UserType string `json:"userType" comment:"用户类型"`
 	Remark   string `json:"remark" comment:"备注"`
 	Status   string `json:"status" comment:"状态" default:"1"`
 	common.ControlBy
@@ -157,6 +173,10 @@ func (s *SysUserUpdateReq) Generate(model *models.SysUser) {
 	model.Email = s.Email
 	model.DeptId = s.DeptId
 	model.PostId = s.PostId
+	model.TenantId = s.TenantId
+	model.RegionId = s.RegionId
+	model.SchoolId = s.SchoolId
+	model.UserType = s.UserType
 	model.Remark = s.Remark
 	model.Status = s.Status
 }

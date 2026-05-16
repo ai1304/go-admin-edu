@@ -1,14 +1,19 @@
 package apis
 
 import (
+	"fmt"
 	"go-admin/app/edu/models"
 	"go-admin/common/dto"
+	"go-admin/common/objectstorage"
+	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/gin-gonic/gin/binding"
 	"github.com/go-admin-team/go-admin-core/sdk/api"
 	"github.com/go-admin-team/go-admin-core/sdk/pkg/jwtauth/user"
+	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
@@ -23,6 +28,12 @@ type activityQuery struct {
 	SchoolId int    `form:"schoolId"`
 }
 
+type activityPortalIdentityReq struct {
+	ClientKey string `json:"clientKey" form:"clientKey"`
+	Name      string `json:"name"`
+	Phone     string `json:"phone"`
+}
+
 func (e EduActivity) GetPage(c *gin.Context) {
 	req := activityQuery{}
 	if err := e.MakeContext(c).MakeOrm().Errors; err != nil {
@@ -31,7 +42,7 @@ func (e EduActivity) GetPage(c *gin.Context) {
 	}
 	_ = c.ShouldBindQuery(&req)
 	list := make([]models.EduActivity, 0)
-	db := e.Orm.Model(&models.EduActivity{})
+	db := applyEduUserScope(c, e.Orm.Model(&models.EduActivity{}))
 	if req.Keyword != "" {
 		like := "%" + req.Keyword + "%"
 		db = db.Where("title like ? or summary like ? or organizer like ?", like, like, like)
@@ -183,9 +194,24 @@ func (e EduActivity) PublicSignup(c *gin.Context) {
 	if req.Status == "" {
 		req.Status = "signed"
 	}
+	if req.ClientKey == "" {
+		e.Error(400, nil, "缺少报名标识")
+		return
+	}
 	var activity models.EduActivity
 	if err := e.Orm.Where("id = ? and status = ?", req.ActivityId, "published").First(&activity).Error; err != nil {
 		e.Error(404, err, "活动不存在")
+		return
+	}
+	var count int64
+	if err := e.Orm.Model(&models.EduActivitySignup{}).
+		Where("activity_id = ? and client_key = ? and status = ?", req.ActivityId, req.ClientKey, "signed").
+		Count(&count).Error; err != nil {
+		e.Error(500, err, "报名失败")
+		return
+	}
+	if count > 0 {
+		e.OK(req.ActivityId, "already signed")
 		return
 	}
 	if err := e.Orm.Create(&req).Error; err != nil {
@@ -194,6 +220,92 @@ func (e EduActivity) PublicSignup(c *gin.Context) {
 	}
 	_ = e.Orm.Model(&models.EduActivity{}).Where("id = ?", req.ActivityId).UpdateColumn("signup_count", gorm.Expr("signup_count + ?", 1)).Error
 	e.OK(req.Id, "报名成功")
+}
+
+func (e EduActivity) PublicSignupState(c *gin.Context) {
+	req := activityPortalIdentityReq{}
+	if err := e.MakeContext(c).MakeOrm().Errors; err != nil {
+		e.Error(500, err, err.Error())
+		return
+	}
+	_ = c.ShouldBindQuery(&req)
+	if req.ClientKey == "" {
+		e.OK(gin.H{"signed": false, "checked": false}, "query success")
+		return
+	}
+	activityId := parsePathId(c.Param("id"))
+	var signup models.EduActivitySignup
+	signed := e.Orm.Where("activity_id = ? and client_key = ? and status = ?", activityId, req.ClientKey, "signed").First(&signup).Error == nil
+	var checkinCount int64
+	_ = e.Orm.Model(&models.EduActivityCheckin{}).Where("activity_id = ? and client_key = ? and status = ?", activityId, req.ClientKey, "checked").Count(&checkinCount).Error
+	e.OK(gin.H{"signed": signed, "checked": checkinCount > 0, "signup": signup}, "query success")
+}
+
+func (e EduActivity) PublicCancelSignup(c *gin.Context) {
+	req := activityPortalIdentityReq{}
+	if err := e.MakeContext(c).MakeOrm().Bind(&req, binding.JSON).Errors; err != nil {
+		e.Error(500, err, err.Error())
+		return
+	}
+	if req.ClientKey == "" {
+		e.Error(400, nil, "缺少报名标识")
+		return
+	}
+	activityId := parsePathId(c.Param("id"))
+	result := e.Orm.Where("activity_id = ? and client_key = ? and status = ?", activityId, req.ClientKey, "signed").
+		Delete(&models.EduActivitySignup{})
+	if result.Error != nil {
+		e.Error(500, result.Error, "取消报名失败")
+		return
+	}
+	if result.RowsAffected > 0 {
+		_ = e.Orm.Model(&models.EduActivity{}).Where("id = ?", activityId).UpdateColumn("signup_count", gorm.Expr("GREATEST(signup_count - ?, 0)", 1)).Error
+	}
+	e.OK(activityId, "取消报名成功")
+}
+
+func (e EduActivity) PublicCheckin(c *gin.Context) {
+	req := activityPortalIdentityReq{}
+	if err := e.MakeContext(c).MakeOrm().Bind(&req, binding.JSON).Errors; err != nil {
+		e.Error(500, err, err.Error())
+		return
+	}
+	if req.ClientKey == "" {
+		e.Error(400, nil, "缺少签到标识")
+		return
+	}
+	activityId := parsePathId(c.Param("id"))
+	var activity models.EduActivity
+	if err := e.Orm.Where("id = ? and status = ?", activityId, "published").First(&activity).Error; err != nil {
+		e.Error(404, err, "活动不存在")
+		return
+	}
+	var signupCount int64
+	if err := e.Orm.Model(&models.EduActivitySignup{}).Where("activity_id = ? and client_key = ? and status = ?", activityId, req.ClientKey, "signed").Count(&signupCount).Error; err != nil {
+		e.Error(500, err, "签到失败")
+		return
+	}
+	if signupCount == 0 {
+		e.Error(400, nil, "请先报名再签到")
+		return
+	}
+	var exists int64
+	_ = e.Orm.Model(&models.EduActivityCheckin{}).Where("activity_id = ? and client_key = ? and status = ?", activityId, req.ClientKey, "checked").Count(&exists).Error
+	if exists > 0 {
+		e.OK(activityId, "already checked")
+		return
+	}
+	checkin := models.EduActivityCheckin{
+		ActivityId: activityId,
+		ClientKey:  req.ClientKey,
+		CheckinAt:  time.Now().Format("2006-01-02 15:04:05"),
+		Status:     "checked",
+	}
+	if err := e.Orm.Create(&checkin).Error; err != nil {
+		e.Error(500, err, "签到失败")
+		return
+	}
+	e.OK(checkin, "签到成功")
 }
 
 func (e EduActivity) GetSignups(c *gin.Context) {
@@ -338,6 +450,91 @@ func (e EduActivity) InsertOutcome(c *gin.Context) {
 		return
 	}
 	e.OK(req.Id, "创建成功")
+}
+
+func (e EduActivity) PublicUploadOutcomeFile(c *gin.Context) {
+	if err := e.MakeContext(c).MakeOrm().Errors; err != nil {
+		e.Error(500, err, err.Error())
+		return
+	}
+	activityId := parsePathId(c.Param("id"))
+	var activity models.EduActivity
+	if err := e.Orm.Where("id = ? and status = ?", activityId, "published").First(&activity).Error; err != nil {
+		e.Error(404, err, "activity not found")
+		return
+	}
+	multipartFile, err := c.FormFile("file")
+	if err != nil {
+		e.Error(400, err, "file is required")
+		return
+	}
+	file, err := multipartFile.Open()
+	if err != nil {
+		e.Error(500, err, "read file failed")
+		return
+	}
+	defer file.Close()
+
+	storage, err := objectstorage.NewFromExtend()
+	if err != nil {
+		e.Error(500, err, "storage is not configured")
+		return
+	}
+	if err := storage.EnsureBucket(c.Request.Context()); err != nil {
+		e.Error(500, err, "init storage bucket failed")
+		return
+	}
+	ext := strings.ToLower(filepath.Ext(multipartFile.Filename))
+	objectKey := fmt.Sprintf("tenant/%d/activity/%d/outcome/%s/%s%s", 0, activityId, time.Now().Format("2006/01"), uuid.New().String(), ext)
+	contentType := multipartFile.Header.Get("Content-Type")
+	if contentType == "" {
+		contentType = "application/octet-stream"
+	}
+	if err := storage.PutObject(c.Request.Context(), objectKey, file, multipartFile.Size, contentType); err != nil {
+		e.Error(500, err, "upload file failed")
+		return
+	}
+	record := models.EduResourceFile{
+		OriginalName: multipartFile.Filename,
+		ObjectKey:    objectKey,
+		Bucket:       storage.BucketName(),
+		ContentType:  contentType,
+		Ext:          strings.TrimPrefix(ext, "."),
+		Size:         multipartFile.Size,
+		Usage:        "activity_outcome",
+	}
+	if err := e.Orm.Create(&record).Error; err != nil {
+		e.Error(500, err, "save file record failed")
+		return
+	}
+	e.OK(record, "upload success")
+}
+
+func (e EduActivity) PublicSubmitOutcome(c *gin.Context) {
+	req := models.EduActivityOutcome{}
+	if err := e.MakeContext(c).MakeOrm().Bind(&req, binding.JSON).Errors; err != nil {
+		e.Error(500, err, err.Error())
+		return
+	}
+	activityId := parsePathId(c.Param("id"))
+	var activity models.EduActivity
+	if err := e.Orm.Where("id = ? and status = ?", activityId, "published").First(&activity).Error; err != nil {
+		e.Error(404, err, "activity not found")
+		return
+	}
+	if strings.TrimSpace(req.Title) == "" {
+		e.Error(400, nil, "outcome title is required")
+		return
+	}
+	req.ActivityId = activityId
+	if req.Status == 0 {
+		req.Status = 1
+	}
+	if err := e.Orm.Create(&req).Error; err != nil {
+		e.Error(500, err, "submit outcome failed")
+		return
+	}
+	e.OK(req, "submit success")
 }
 
 func (e EduActivity) UpdateOutcome(c *gin.Context) {

@@ -6,6 +6,14 @@ export const request = axios.create({
   timeout: 15000
 });
 
+request.interceptors.request.use(config => {
+  const token = localStorage.getItem("portalToken") || localStorage.getItem("token");
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
 request.interceptors.response.use(
   response => response.data,
   error => Promise.reject(error)

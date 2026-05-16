@@ -22,8 +22,40 @@ export function removeCases(data) {
   return request({ url, method: 'delete', data });
 }
 
+export function submitCaseReview(id) {
+  return request({ url: `${url}/${id}/submit-review`, method: 'put' });
+}
+
+export function reviewCase(id, data) {
+  return request({ url: `${url}/${id}/review`, method: 'put', data });
+}
+
+export function getCaseReviews(id) {
+  return request({ url: `${url}/${id}/reviews`, method: 'get' });
+}
+
+export function getCaseAttachments(id) {
+  return request({ url: `${url}/${id}/attachments`, method: 'get' });
+}
+
+export function addCaseAttachment(id, data) {
+  return request({ url: `${url}/${id}/attachments`, method: 'post', data });
+}
+
+export function removeCaseAttachments(id, data) {
+  return request({ url: `${url}/${id}/attachments`, method: 'delete', data });
+}
+
+export function getCaseAttachmentFileUrl(id, attachmentId) {
+  return request({ url: `${url}/${id}/attachments/${attachmentId}/file-url`, method: 'get' });
+}
+
 export function getCaseAccessLogs(id, params) {
   return request({ url: `${url}/${id}/access-logs`, method: 'get', params });
+}
+
+export function exportCaseAccessLogs(id, params) {
+  return request({ url: `${url}/${id}/access-logs/export`, method: 'get', params, responseType: 'blob' });
 }
 
 export function getCaseAuthorizations(id, params) {

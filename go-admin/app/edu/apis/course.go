@@ -1,13 +1,19 @@
 package apis
 
 import (
+	"fmt"
 	"go-admin/app/edu/models"
 	"go-admin/common/dto"
+	"go-admin/common/objectstorage"
+	"path/filepath"
+	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/gin-gonic/gin/binding"
 	"github.com/go-admin-team/go-admin-core/sdk/api"
 	"github.com/go-admin-team/go-admin-core/sdk/pkg/jwtauth/user"
+	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
@@ -30,10 +36,11 @@ type publicCourseIdentityReq struct {
 }
 
 type publicLearningReq struct {
-	UserId    int    `json:"userId"`
-	ClientKey string `json:"clientKey"`
-	Progress  int    `json:"progress"`
-	Status    string `json:"status"`
+	UserId         int    `json:"userId"`
+	ClientKey      string `json:"clientKey"`
+	Progress       int    `json:"progress"`
+	WatchedSeconds int    `json:"watchedSeconds"`
+	Status         string `json:"status"`
 }
 
 type publicAssignmentSubmissionReq struct {
@@ -52,7 +59,7 @@ func (e EduCourse) GetPage(c *gin.Context) {
 	}
 	_ = c.ShouldBindQuery(&req)
 	list := make([]models.EduCourse, 0)
-	db := e.Orm.Model(&models.EduCourse{})
+	db := applyEduUserScope(c, e.Orm.Model(&models.EduCourse{}))
 	if req.Keyword != "" {
 		like := "%" + req.Keyword + "%"
 		db = db.Where("title like ? or summary like ? or teacher_name like ?", like, like, like)
@@ -240,6 +247,46 @@ func (e EduCourse) PublicGetLearningRecords(c *gin.Context) {
 	e.OK(list, "查询成功")
 }
 
+func (e EduCourse) PublicLessonVideoURL(c *gin.Context) {
+	if err := e.MakeContext(c).MakeOrm().Errors; err != nil {
+		e.Error(500, err, err.Error())
+		return
+	}
+	courseId := parsePathId(c.Param("id"))
+	lessonId := parsePathId(c.Param("lessonId"))
+	var course models.EduCourse
+	if err := e.Orm.Where("id = ? and status = ?", courseId, "published").First(&course).Error; err != nil {
+		e.Error(404, err, "course not found")
+		return
+	}
+	var lesson models.EduCourseLesson
+	if err := e.Orm.Where("id = ? and course_id = ? and status = ?", lessonId, courseId, 1).First(&lesson).Error; err != nil {
+		e.Error(404, err, "lesson not found")
+		return
+	}
+	if lesson.VideoFileId == 0 {
+		e.Error(400, nil, "lesson video is empty")
+		return
+	}
+	var file models.EduResourceFile
+	if err := e.Orm.First(&file, lesson.VideoFileId).Error; err != nil {
+		e.Error(404, err, "video file not found")
+		return
+	}
+	storage, err := objectstorage.NewFromExtend()
+	if err != nil {
+		e.Error(500, err, "storage is not configured")
+		return
+	}
+	expires := 15 * time.Minute
+	url, err := storage.PresignedGetObject(c.Request.Context(), file.ObjectKey, expires)
+	if err != nil {
+		e.Error(500, err, "get video url failed")
+		return
+	}
+	e.OK(gin.H{"url": url, "expiresIn": int(expires.Seconds()), "file": file, "lesson": lesson}, "query success")
+}
+
 func (e EduCourse) PublicTrackLearning(c *gin.Context) {
 	req := publicLearningReq{}
 	if err := e.MakeContext(c).MakeOrm().Bind(&req, binding.JSON).Errors; err != nil {
@@ -257,6 +304,9 @@ func (e EduCourse) PublicTrackLearning(c *gin.Context) {
 	}
 	if req.Progress > 100 {
 		req.Progress = 100
+	}
+	if req.WatchedSeconds < 0 {
+		req.WatchedSeconds = 0
 	}
 	if req.Status == "" {
 		req.Status = "learning"
@@ -293,13 +343,15 @@ func (e EduCourse) PublicTrackLearning(c *gin.Context) {
 	err := db.First(&record).Error
 	if err == nil {
 		if err := e.Orm.Model(&record).Updates(map[string]interface{}{
-			"progress": req.Progress,
-			"status":   req.Status,
+			"progress":        req.Progress,
+			"watched_seconds": req.WatchedSeconds,
+			"status":          req.Status,
 		}).Error; err != nil {
 			e.Error(500, err, "记录学习失败")
 			return
 		}
 		record.Progress = req.Progress
+		record.WatchedSeconds = req.WatchedSeconds
 		record.Status = req.Status
 		e.OK(record, "记录成功")
 		return
@@ -309,12 +361,13 @@ func (e EduCourse) PublicTrackLearning(c *gin.Context) {
 		return
 	}
 	record = models.EduLearningRecord{
-		CourseId:  courseId,
-		LessonId:  lessonId,
-		UserId:    req.UserId,
-		ClientKey: req.ClientKey,
-		Progress:  req.Progress,
-		Status:    req.Status,
+		CourseId:       courseId,
+		LessonId:       lessonId,
+		UserId:         req.UserId,
+		ClientKey:      req.ClientKey,
+		Progress:       req.Progress,
+		WatchedSeconds: req.WatchedSeconds,
+		Status:         req.Status,
 	}
 	if err := e.Orm.Create(&record).Error; err != nil {
 		e.Error(500, err, "记录学习失败")
@@ -370,6 +423,70 @@ func (e EduCourse) PublicSubmitAssignment(c *gin.Context) {
 		return
 	}
 	e.OK(submission, "提交成功")
+}
+
+func (e EduCourse) PublicUploadAssignmentFile(c *gin.Context) {
+	if err := e.MakeContext(c).MakeOrm().Errors; err != nil {
+		e.Error(500, err, err.Error())
+		return
+	}
+	courseId := parsePathId(c.Param("id"))
+	assignmentId := parsePathId(c.Param("assignmentId"))
+	var course models.EduCourse
+	if err := e.Orm.Where("id = ? and status = ?", courseId, "published").First(&course).Error; err != nil {
+		e.Error(404, err, "course not found")
+		return
+	}
+	var assignment models.EduAssignment
+	if err := e.Orm.Where("id = ? and course_id = ? and status = ?", assignmentId, courseId, 1).First(&assignment).Error; err != nil {
+		e.Error(404, err, "assignment not found")
+		return
+	}
+	multipartFile, err := c.FormFile("file")
+	if err != nil {
+		e.Error(400, err, "file is required")
+		return
+	}
+	file, err := multipartFile.Open()
+	if err != nil {
+		e.Error(500, err, "read file failed")
+		return
+	}
+	defer file.Close()
+
+	storage, err := objectstorage.NewFromExtend()
+	if err != nil {
+		e.Error(500, err, "storage is not configured")
+		return
+	}
+	if err := storage.EnsureBucket(c.Request.Context()); err != nil {
+		e.Error(500, err, "init storage bucket failed")
+		return
+	}
+	ext := strings.ToLower(filepath.Ext(multipartFile.Filename))
+	objectKey := fmt.Sprintf("tenant/%d/course/%d/assignment/%s/%s%s", 0, courseId, time.Now().Format("2006/01"), uuid.New().String(), ext)
+	contentType := multipartFile.Header.Get("Content-Type")
+	if contentType == "" {
+		contentType = "application/octet-stream"
+	}
+	if err := storage.PutObject(c.Request.Context(), objectKey, file, multipartFile.Size, contentType); err != nil {
+		e.Error(500, err, "upload file failed")
+		return
+	}
+	record := models.EduResourceFile{
+		OriginalName: multipartFile.Filename,
+		ObjectKey:    objectKey,
+		Bucket:       storage.BucketName(),
+		ContentType:  contentType,
+		Ext:          strings.TrimPrefix(ext, "."),
+		Size:         multipartFile.Size,
+		Usage:        "assignment",
+	}
+	if err := e.Orm.Create(&record).Error; err != nil {
+		e.Error(500, err, "save file record failed")
+		return
+	}
+	e.OK(record, "upload success")
 }
 
 func (e EduCourse) GetChapters(c *gin.Context) {
@@ -624,6 +741,40 @@ func (e EduCourse) UpdateAssignmentSubmission(c *gin.Context) {
 	e.OK(c.Param("submissionId"), "更新成功")
 }
 
+func (e EduCourse) GetAssignmentSubmissionFileURL(c *gin.Context) {
+	if err := e.MakeContext(c).MakeOrm().Errors; err != nil {
+		e.Error(500, err, err.Error())
+		return
+	}
+	var submission models.EduAssignmentSubmission
+	if err := e.Orm.Where("id = ? and course_id = ? and assignment_id = ?", c.Param("submissionId"), c.Param("id"), c.Param("assignmentId")).
+		First(&submission).Error; err != nil {
+		e.Error(404, err, "submission not found")
+		return
+	}
+	if submission.FileId == 0 {
+		e.Error(400, nil, "submission file is empty")
+		return
+	}
+	var file models.EduResourceFile
+	if err := e.Orm.First(&file, submission.FileId).Error; err != nil {
+		e.Error(404, err, "file not found")
+		return
+	}
+	storage, err := objectstorage.NewFromExtend()
+	if err != nil {
+		e.Error(500, err, "storage is not configured")
+		return
+	}
+	expires := 15 * time.Minute
+	url, err := storage.PresignedGetObject(c.Request.Context(), file.ObjectKey, expires)
+	if err != nil {
+		e.Error(500, err, "get file url failed")
+		return
+	}
+	e.OK(gin.H{"url": url, "expiresIn": int(expires.Seconds()), "file": file}, "query success")
+}
+
 func (e EduCourse) DeleteAssignmentSubmissions(c *gin.Context) {
 	req := struct {
 		Ids []int `json:"ids"`
@@ -683,11 +834,12 @@ func (e EduCourse) UpdateLearningRecord(c *gin.Context) {
 	}
 	req.SetUpdateBy(user.GetUserId(c))
 	updates := map[string]interface{}{
-		"lesson_id": req.LessonId,
-		"user_id":   req.UserId,
-		"progress":  req.Progress,
-		"status":    req.Status,
-		"update_by": req.UpdateBy,
+		"lesson_id":       req.LessonId,
+		"user_id":         req.UserId,
+		"progress":        req.Progress,
+		"watched_seconds": req.WatchedSeconds,
+		"status":          req.Status,
+		"update_by":       req.UpdateBy,
 	}
 	if err := e.Orm.Model(&models.EduLearningRecord{}).
 		Where("id = ? and course_id = ?", c.Param("recordId"), c.Param("id")).

@@ -19,6 +19,11 @@ func registerPublicExpertRouter(v1 *gin.RouterGroup) {
 	{
 		r.GET("", api.PublicGetPage)
 		r.GET("/:id", api.PublicGet)
+		r.GET("/:id/resources/:resourceId/access-url", api.PublicResourceAccessURL)
+		r.GET("/:id/favorite-state", api.PublicFavoriteState)
+		r.POST("/:id/favorite", api.PublicFavorite)
+		r.DELETE("/:id/favorite", api.PublicUnfavorite)
+		r.PUT("/:id/share", api.PublicShare)
 	}
 }
 
@@ -43,5 +48,13 @@ func registerStatsRouter(v1 *gin.RouterGroup, authMiddleware *jwt.GinJWTMiddlewa
 	r := v1.Group("/edu/stats").Use(authMiddleware.MiddlewareFunc()).Use(middleware.AuthCheckRole())
 	{
 		r.GET("/overview", api.Overview)
+		r.GET("/resources", api.Resources)
+		r.GET("/courses", api.Courses)
+		r.GET("/activities", api.Activities)
+		r.GET("/schools", api.Schools)
+		r.GET("/teachers", api.Teachers)
+		r.GET("/students", api.Students)
+		r.GET("/cases", api.Cases)
+		r.GET("/export", api.Export)
 	}
 }

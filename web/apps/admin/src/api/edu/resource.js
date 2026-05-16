@@ -25,6 +25,10 @@ export function removeResources(data) {
   return request({ url: resourceUrl, method: 'delete', data });
 }
 
+export function reindexResourceSearch() {
+  return request({ url: `${resourceUrl}/search/reindex`, method: 'put' });
+}
+
 export function submitResourceReview(id) {
   return request({ url: `${resourceUrl}/${id}/submit-review`, method: 'put' });
 }

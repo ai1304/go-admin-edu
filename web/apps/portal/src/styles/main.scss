@@ -93,7 +93,7 @@ a {
 
 .quick-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: 16px;
 }
 
@@ -307,6 +307,127 @@ a {
   width: min(420px, 100%);
 }
 
+.captcha-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 120px;
+  gap: 10px;
+  align-items: center;
+}
+
+.captcha-img {
+  width: 120px;
+  height: 36px;
+  object-fit: cover;
+  border: 1px solid #e5e6eb;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.workbench-layout {
+  display: grid;
+  grid-template-columns: 300px minmax(0, 1fr);
+  gap: 16px;
+}
+
+.workbench-list,
+.workbench-panel {
+  background: #fff;
+  border: 1px solid #e5e6eb;
+  border-radius: 8px;
+}
+
+.workbench-list {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  padding: 12px;
+}
+
+.case-list-item {
+  display: grid;
+  gap: 6px;
+  width: 100%;
+  padding: 12px;
+  color: #1d2129;
+  text-align: left;
+  background: #fff;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.case-list-item:hover,
+.case-list-item.active {
+  background: #f2f6ff;
+  border-color: #bedaff;
+}
+
+.case-list-item span {
+  color: #86909c;
+  font-size: 13px;
+}
+
+.workbench-panel {
+  min-width: 0;
+  padding: 22px;
+}
+
+.workbench-title {
+  display: flex;
+  gap: 16px;
+  justify-content: space-between;
+  margin-bottom: 18px;
+}
+
+.workbench-title h2 {
+  margin: 0;
+  font-size: 24px;
+}
+
+.workbench-title p {
+  margin: 8px 0 0;
+  color: #4e5969;
+  line-height: 1.7;
+}
+
+.workbench-tabs {
+  margin-top: 18px;
+}
+
+.tab-action {
+  margin-bottom: 12px;
+}
+
+.record-list {
+  display: grid;
+  gap: 12px;
+}
+
+.record-item {
+  display: grid;
+  gap: 6px;
+  padding: 14px;
+  background: #f7f8fa;
+  border-radius: 6px;
+}
+
+.record-item p {
+  margin: 0;
+  color: #4e5969;
+  line-height: 1.7;
+}
+
+.record-item small {
+  color: #86909c;
+}
+
+.record-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
 @media (max-width: 860px) {
   .portal-header {
     gap: 16px;
@@ -320,7 +441,8 @@ a {
   .hero,
   .quick-grid,
   .content-grid,
-  .detail-layout {
+  .detail-layout,
+  .workbench-layout {
     grid-template-columns: 1fr;
   }
 }

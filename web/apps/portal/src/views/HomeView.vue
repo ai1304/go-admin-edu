@@ -25,6 +25,7 @@ const quickLinks = [
   { title: "资源中心", description: "检索、预览和收藏教学资源", path: "/resources" },
   { title: "专题课程", description: "进入课程学习和进度记录", path: "/courses" },
   { title: "教研活动", description: "查看活动、报名和成果", path: "/activities" },
-  { title: "名师资源", description: "浏览专家讲座和优质资料", path: "/experts" }
+  { title: "名师资源", description: "浏览专家讲座和优质资料", path: "/experts" },
+  { title: "教师工作台", description: "进入特教个案、IEP 和干预记录", path: "/teacher/workbench" }
 ];
 </script>

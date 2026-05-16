@@ -29,6 +29,10 @@ func PayloadFunc(data interface{}) jwt.MapClaims {
 			jwt.NiceKey:      u.Username,
 			jwt.DataScopeKey: r.DataScope,
 			jwt.RoleNameKey:  r.RoleName,
+			"tenantId":       u.TenantId,
+			"regionId":       u.RegionId,
+			"schoolId":       u.SchoolId,
+			"userType":       u.UserType,
 		}
 	}
 	return jwt.MapClaims{}
@@ -43,6 +47,10 @@ func IdentityHandler(c *gin.Context) interface{} {
 		"UserId":      claims["identity"],
 		"RoleIds":     claims["roleid"],
 		"DataScope":   claims["datascope"],
+		"TenantId":    claims["tenantId"],
+		"RegionId":    claims["regionId"],
+		"SchoolId":    claims["schoolId"],
+		"UserType":    claims["userType"],
 	}
 }
 

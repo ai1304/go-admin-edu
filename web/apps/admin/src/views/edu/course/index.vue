@@ -257,6 +257,8 @@
           <template #operations="{ record }">
             <a-space>
               <a-button type="text" size="small" @click="openSubmissionEdit(record)">编辑</a-button>
+              <a-button v-if="record.fileId" type="text" size="small" @click="openSubmissionFile(record)">附件</a-button>
+              <a-button type="text" size="small" @click="quickGrade(record)">评分</a-button>
               <a-button type="text" status="danger" size="small" @click="handleSubmissionDelete(record)">删除</a-button>
             </a-space>
           </template>
@@ -343,6 +345,7 @@ import {
   addCourseLearningRecord,
   addCourseLesson,
   getCourseAssignments,
+  getCourseAssignmentSubmissionFileUrl,
   getCourseAssignmentSubmissions,
   getCourseChapters,
   getCourseLearningRecords,
@@ -443,7 +446,7 @@ const submissionColumns = [
   { title: '附件文件 ID', dataIndex: 'fileId', width: 120 },
   { title: '分数', dataIndex: 'score', width: 90 },
   { title: '状态', slotName: 'status', width: 100 },
-  { title: '操作', slotName: 'operations', width: 150 }
+  { title: '操作', slotName: 'operations', width: 220 }
 ];
 const recordColumns = [
   { title: '用户 ID', dataIndex: 'userId', width: 100 },
@@ -727,6 +730,23 @@ function openSubmissionCreate() {
 
 function openSubmissionEdit(record) {
   Object.assign(submissionModel, defaultSubmissionForm(), record);
+  submissionFormVisible.value = true;
+}
+
+async function openSubmissionFile(record) {
+  const res = await getCourseAssignmentSubmissionFileUrl(currentCourse.value.id, currentAssignment.value.id, record.id);
+  const url = res.data?.url || res.url;
+  if (!url) {
+    Message.warning('暂未获取到附件访问地址');
+    return;
+  }
+  window.open(url, '_blank', 'noopener,noreferrer');
+}
+
+function quickGrade(record) {
+  Object.assign(submissionModel, defaultSubmissionForm(), record, {
+    status: record.status === 'submitted' ? 'graded' : record.status
+  });
   submissionFormVisible.value = true;
 }
 

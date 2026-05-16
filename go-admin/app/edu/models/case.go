@@ -56,6 +56,32 @@ func (*EduCaseIntervention) TableName() string {
 	return "edu_case_intervention"
 }
 
+type EduCaseAttachment struct {
+	BaseModel
+	CaseId int    `json:"caseId" gorm:"index;comment:案例ID"`
+	FileId int    `json:"fileId" gorm:"index;comment:文件ID"`
+	Title  string `json:"title" gorm:"size:255;comment:附件标题"`
+	Remark string `json:"remark" gorm:"size:512;comment:备注"`
+	Status int    `json:"status" gorm:"default:1;comment:状态"`
+}
+
+func (*EduCaseAttachment) TableName() string {
+	return "edu_case_attachment"
+}
+
+type EduCaseReview struct {
+	BaseModel
+	CaseId       int    `json:"caseId" gorm:"index;comment:案例ID"`
+	Action       string `json:"action" gorm:"size:64;index;comment:审核动作"`
+	Comment      string `json:"comment" gorm:"size:512;comment:审核意见"`
+	BeforeStatus string `json:"beforeStatus" gorm:"size:32;comment:审核前状态"`
+	AfterStatus  string `json:"afterStatus" gorm:"size:32;comment:审核后状态"`
+}
+
+func (*EduCaseReview) TableName() string {
+	return "edu_case_review"
+}
+
 type EduCaseAccessLog struct {
 	BaseModel
 	CaseId    int    `json:"caseId" gorm:"index;comment:案例ID"`

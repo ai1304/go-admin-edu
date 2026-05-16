@@ -18,6 +18,10 @@ type SysUser struct {
 	Email    string `json:"email" gorm:"size:128;comment:邮箱"`
 	DeptId   int    `json:"deptId" gorm:"size:20;comment:部门"`
 	PostId   int    `json:"postId" gorm:"size:20;comment:岗位"`
+	TenantId int    `json:"tenantId" gorm:"index;comment:租户ID"`
+	RegionId int    `json:"regionId" gorm:"index;comment:区域ID"`
+	SchoolId int    `json:"schoolId" gorm:"index;comment:学校ID"`
+	UserType string `json:"userType" gorm:"size:32;index;comment:用户类型"`
 	Remark   string `json:"remark" gorm:"size:255;comment:备注"`
 	Status   string `json:"status" gorm:"size:4;comment:状态"`
 	DeptIds  []int  `json:"deptIds" gorm:"-"`

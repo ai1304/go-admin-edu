@@ -82,6 +82,10 @@ export function updateCourseAssignmentSubmission(courseId, assignmentId, submiss
   return request({ url: `${url}/${courseId}/assignments/${assignmentId}/submissions/${submissionId}`, method: 'put', data });
 }
 
+export function getCourseAssignmentSubmissionFileUrl(courseId, assignmentId, submissionId) {
+  return request({ url: `${url}/${courseId}/assignments/${assignmentId}/submissions/${submissionId}/file-url`, method: 'get' });
+}
+
 export function removeCourseAssignmentSubmissions(courseId, assignmentId, data) {
   return request({ url: `${url}/${courseId}/assignments/${assignmentId}/submissions`, method: 'delete', data });
 }
