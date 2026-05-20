@@ -23,9 +23,14 @@ type EduActivity struct {
 
 type activityQuery struct {
 	dto.Pagination
-	Keyword  string `form:"keyword"`
-	Status   string `form:"status"`
-	SchoolId int    `form:"schoolId"`
+	Keyword    string `form:"keyword"`
+	Status     string `form:"status"`
+	SchoolId   int    `form:"schoolId"`
+	Edition    string `form:"edition"`
+	AwardLevel string `form:"awardLevel"`
+	Track      string `form:"track"`
+	SchoolType string `form:"schoolType"`
+	TitleRank  string `form:"titleRank"`
 }
 
 type activityPortalIdentityReq struct {
@@ -53,12 +58,27 @@ func (e EduActivity) GetPage(c *gin.Context) {
 	if req.SchoolId != 0 {
 		db = db.Where("school_id = ?", req.SchoolId)
 	}
+	if req.Edition != "" {
+		db = db.Where("edition = ?", req.Edition)
+	}
+	if req.AwardLevel != "" {
+		db = db.Where("award_level = ?", req.AwardLevel)
+	}
+	if req.Track != "" {
+		db = db.Where("track = ?", req.Track)
+	}
+	if req.SchoolType != "" {
+		db = db.Where("school_type = ?", req.SchoolType)
+	}
+	if req.TitleRank != "" {
+		db = db.Where("title_rank = ?", req.TitleRank)
+	}
 	var count int64
 	if err := db.Count(&count).Error; err != nil {
 		e.Error(500, err, "查询失败")
 		return
 	}
-	if err := db.Order("id desc").Limit(req.GetPageSize()).Offset((req.GetPageIndex() - 1) * req.GetPageSize()).Find(&list).Error; err != nil {
+	if err := db.Order("sort desc,start_time desc,id desc").Limit(req.GetPageSize()).Offset((req.GetPageIndex() - 1) * req.GetPageSize()).Find(&list).Error; err != nil {
 		e.Error(500, err, "查询失败")
 		return
 	}
@@ -76,14 +96,29 @@ func (e EduActivity) PublicGetPage(c *gin.Context) {
 	db := e.Orm.Model(&models.EduActivity{}).Where("status = ?", "published")
 	if req.Keyword != "" {
 		like := "%" + req.Keyword + "%"
-		db = db.Where("title like ? or summary like ? or organizer like ?", like, like, like)
+		db = db.Where("title like ? or summary like ? or organizer like ? or school like ? or teacher like ?", like, like, like, like, like)
+	}
+	if req.Edition != "" {
+		db = db.Where("edition = ?", req.Edition)
+	}
+	if req.AwardLevel != "" {
+		db = db.Where("award_level = ?", req.AwardLevel)
+	}
+	if req.Track != "" {
+		db = db.Where("track = ?", req.Track)
+	}
+	if req.SchoolType != "" {
+		db = db.Where("school_type = ?", req.SchoolType)
+	}
+	if req.TitleRank != "" {
+		db = db.Where("title_rank = ?", req.TitleRank)
 	}
 	var count int64
 	if err := db.Count(&count).Error; err != nil {
 		e.Error(500, err, "查询失败")
 		return
 	}
-	if err := db.Order("start_time desc,id desc").Limit(req.GetPageSize()).Offset((req.GetPageIndex() - 1) * req.GetPageSize()).Find(&list).Error; err != nil {
+	if err := db.Order("sort desc,start_time desc,id desc").Limit(req.GetPageSize()).Offset((req.GetPageIndex() - 1) * req.GetPageSize()).Find(&list).Error; err != nil {
 		e.Error(500, err, "查询失败")
 		return
 	}

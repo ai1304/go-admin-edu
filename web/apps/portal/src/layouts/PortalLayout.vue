@@ -13,9 +13,10 @@
         <router-link to="/resources">资源中心</router-link>
         <router-link to="/courses">专题课程</router-link>
         <router-link to="/activities">教研活动</router-link>
-        <router-link to="/resources?type=case">特教案例</router-link>
+        <router-link to="/cases">特教案例</router-link>
         <router-link to="/experts">名师资源</router-link>
-        <router-link to="/teacher/workbench">AI应用</router-link>
+        <router-link to="/news">行业资讯</router-link>
+        <router-link to="/ai">AI应用</router-link>
       </nav>
       <a-dropdown v-if="session.isLoggedIn">
         <a-button class="login-button">{{ session.user?.name || session.user?.userName || "已登录" }}</a-button>

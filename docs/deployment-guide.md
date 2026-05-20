@@ -145,6 +145,25 @@ MinIO 默认账号：
 
 ## 5. 远程服务器首次部署
 
+### 5.0 一键脚本部署
+
+在本地项目根目录执行。脚本会自动完成本地构建、打包、上传、远端迁移、重启和健康检查。
+
+```powershell
+$env:GO_ADMIN_EDU_SSH_PASS = "服务器 root 密码"
+powershell -ExecutionPolicy Bypass -File scripts\deploy-117.ps1
+```
+
+常用参数：
+
+```powershell
+# 使用已有构建产物，只重新打包上传
+powershell -ExecutionPolicy Bypass -File scripts\deploy-117.ps1 -SkipBuild
+
+# 跳过门户业务数据接口抽查
+powershell -ExecutionPolicy Bypass -File scripts\deploy-117.ps1 -SkipPortalDataCheck
+```
+
 ### 5.1 服务器准备
 
 服务器需要安装：

@@ -37,6 +37,16 @@ const routes = [
     component: () => import("@/views/ActivityDetailView.vue")
   },
   {
+    path: "/cases",
+    name: "cases",
+    component: () => import("@/views/CaseListView.vue")
+  },
+  {
+    path: "/cases/:id",
+    name: "case-detail",
+    component: () => import("@/views/CaseDetailView.vue")
+  },
+  {
     path: "/experts",
     name: "experts",
     component: () => import("@/views/ExpertListView.vue")
@@ -45,6 +55,21 @@ const routes = [
     path: "/experts/:id",
     name: "expert-detail",
     component: () => import("@/views/ExpertDetailView.vue")
+  },
+  {
+    path: "/news",
+    name: "news",
+    component: () => import("@/views/NewsListView.vue")
+  },
+  {
+    path: "/news/:id",
+    name: "news-detail",
+    component: () => import("@/views/NewsDetailView.vue")
+  },
+  {
+    path: "/ai",
+    name: "ai",
+    component: () => import("@/views/AiAssistantView.vue")
   },
   {
     path: "/teacher/workbench",

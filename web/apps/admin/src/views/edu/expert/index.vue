@@ -57,6 +57,16 @@
               </a-select>
             </a-form-item>
           </a-col>
+          <a-col :span="12">
+            <a-form-item field="isRecommended" label="门户推荐">
+              <a-switch v-model="formModel.isRecommended" :checked-value="1" :unchecked-value="0" />
+            </a-form-item>
+          </a-col>
+          <a-col :span="12">
+            <a-form-item field="sort" label="门户排序">
+              <a-input-number v-model="formModel.sort" :min="0" style="width: 100%" />
+            </a-form-item>
+          </a-col>
           <a-col :span="24">
             <a-form-item field="specialties" label="擅长领域">
               <a-input v-model="formModel.specialties" placeholder="多个领域用逗号分隔" />
@@ -170,6 +180,7 @@ const columns = [
   { title: '职称', dataIndex: 'title', width: 130 },
   { title: '机构', dataIndex: 'organization', ellipsis: true, tooltip: true },
   { title: '擅长领域', dataIndex: 'specialties', ellipsis: true, tooltip: true },
+  { title: '推荐', dataIndex: 'isRecommended', width: 80 },
   { title: '状态', slotName: 'status', width: 100 },
   { title: '操作', slotName: 'operations', width: 190 }
 ];
@@ -184,7 +195,7 @@ const resourceColumns = [
 ];
 
 function defaultForm() {
-  return { id: undefined, name: '', title: '', organization: '', specialties: '', introduction: '', status: 1 };
+  return { id: undefined, name: '', title: '', organization: '', specialties: '', introduction: '', isRecommended: 0, sort: 0, status: 1 };
 }
 
 function defaultResourceForm() {

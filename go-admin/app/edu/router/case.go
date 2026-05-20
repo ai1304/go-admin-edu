@@ -10,6 +10,16 @@ import (
 
 func init() {
 	routerCheckRole = append(routerCheckRole, registerCaseRouter)
+	routerNoCheckRole = append(routerNoCheckRole, registerPublicCaseRouter)
+}
+
+func registerPublicCaseRouter(v1 *gin.RouterGroup) {
+	api := apis.EduCase{}
+	r := v1.Group("/portal/cases")
+	{
+		r.GET("", api.PublicGetPage)
+		r.GET("/:id", api.PublicGet)
+	}
 }
 
 func registerCaseRouter(v1 *gin.RouterGroup, authMiddleware *jwt.GinJWTMiddleware) {

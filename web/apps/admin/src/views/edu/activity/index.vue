@@ -50,6 +50,16 @@
             </a-form-item>
           </a-col>
           <a-col :span="12">
+            <a-form-item field="school" label="学校">
+              <a-input v-model="formModel.school" placeholder="请输入学校" />
+            </a-form-item>
+          </a-col>
+          <a-col :span="12">
+            <a-form-item field="teacher" label="教师">
+              <a-input v-model="formModel.teacher" placeholder="请输入教师" />
+            </a-form-item>
+          </a-col>
+          <a-col :span="12">
             <a-form-item field="startTime" label="开始时间">
               <a-input v-model="formModel.startTime" placeholder="例如 2026-05-20 09:00" />
             </a-form-item>
@@ -62,6 +72,36 @@
           <a-col :span="12">
             <a-form-item field="location" label="地点">
               <a-input v-model="formModel.location" placeholder="请输入活动地点" />
+            </a-form-item>
+          </a-col>
+          <a-col :span="12">
+            <a-form-item field="edition" label="届数">
+              <a-input v-model="formModel.edition" placeholder="如：第一届" />
+            </a-form-item>
+          </a-col>
+          <a-col :span="12">
+            <a-form-item field="awardLevel" label="获奖等级">
+              <a-input v-model="formModel.awardLevel" placeholder="如：一等奖" />
+            </a-form-item>
+          </a-col>
+          <a-col :span="12">
+            <a-form-item field="track" label="赛道">
+              <a-input v-model="formModel.track" placeholder="如：课程思政" />
+            </a-form-item>
+          </a-col>
+          <a-col :span="12">
+            <a-form-item field="schoolType" label="学校类型">
+              <a-input v-model="formModel.schoolType" placeholder="部属高校 / 地方高校" />
+            </a-form-item>
+          </a-col>
+          <a-col :span="12">
+            <a-form-item field="titleRank" label="职称">
+              <a-input v-model="formModel.titleRank" placeholder="正高 / 副高 / 中级及以下" />
+            </a-form-item>
+          </a-col>
+          <a-col :span="12">
+            <a-form-item field="sort" label="门户排序">
+              <a-input-number v-model="formModel.sort" :min="0" style="width: 100%" />
             </a-form-item>
           </a-col>
           <a-col :span="12">
@@ -254,7 +294,25 @@ const outcomeColumns = [
 ];
 
 function defaultForm() {
-  return { id: undefined, title: '', summary: '', startTime: '', endTime: '', location: '', organizer: '', status: 'draft' };
+  return {
+    id: undefined,
+    title: '',
+    summary: '',
+    coverUrl: '',
+    startTime: '',
+    endTime: '',
+    location: '',
+    organizer: '',
+    school: '',
+    teacher: '',
+    edition: '',
+    awardLevel: '',
+    track: '',
+    schoolType: '',
+    titleRank: '',
+    status: 'draft',
+    sort: 0
+  };
 }
 
 function assignForm(data = {}) {

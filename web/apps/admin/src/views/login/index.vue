@@ -113,9 +113,13 @@ const loginRules = {
 
 // 获取验证码
 const loadCaptcha = async () => {
-  const res = await getCaptcha();
-  captchUrl.value = res.data;
-  loginForm.uuid = res.id;
+  try {
+    const res = await getCaptcha();
+    captchUrl.value = res.data;
+    loginForm.uuid = res.id;
+  } catch (err) {
+    proxy.$message.error('验证码加载失败，请稍后重试');
+  }
 };
 
 // 登陆
@@ -123,28 +127,29 @@ const handleLogin = () => {
   loading.value = true;
   // 如果 valid 为空则校验成功
   proxy.$refs.loginFormRef.validate(async (valid) => {
-    if (!valid) {
-      try {
-        const { code, token, msg } = await login(loginForm);
-        if ( code == 200 ) {
-          await store.setToken(token);
-          proxy.$message.success({
-            content: '登陆成功',
-            duration: 2000,
-          });
-          setTimeout(() => {
-            proxy.$router.push('/admin/sys-api');
-            loading.value = false;
-          }, 500);
-        } else {
-          proxy.$message.error(`登陆失败：${msg}`);
-        }
-      } catch (err) {
-        // 登录失败 重新获取验证码
-        loadCaptcha();
-      } finally {
+    if (valid) {
+      loading.value = false;
+      return;
+    }
+    try {
+      const { code, token, msg } = await login(loginForm);
+      if ( code == 200 ) {
+        await store.setToken(token);
+        proxy.$message.success({
+          content: '登陆成功',
+          duration: 2000,
+        });
+        setTimeout(() => {
+          proxy.$router.push('/admin/sys-api');
+        }, 500);
+      } else {
+        proxy.$message.error(`登陆失败：${msg}`);
         loading.value = false;
       }
+    } catch (err) {
+      // 登录失败 重新获取验证码
+      await loadCaptcha();
+      loading.value = false;
     }
   });
 };

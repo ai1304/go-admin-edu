@@ -39,10 +39,11 @@ export function getPublishedResource(id) {
   });
 }
 
-export function getResourceFileAccessUrl(resourceId, fileId) {
+export function getResourceFileAccessUrl(resourceId, fileId, params) {
   return request({
     url: `/portal/resources/${resourceId}/files/${fileId}/access-url`,
-    method: "get"
+    method: "get",
+    params
   });
 }
 

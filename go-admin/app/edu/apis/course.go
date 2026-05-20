@@ -28,6 +28,8 @@ type courseQuery struct {
 	SchoolId         int    `form:"schoolId"`
 	StageCategoryId  int    `form:"stageCategoryId"`
 	DisabilityTypeId int    `form:"disabilityTypeId"`
+	Category         string `form:"category"`
+	Difficulty       string `form:"difficulty"`
 }
 
 type publicCourseIdentityReq struct {
@@ -76,12 +78,18 @@ func (e EduCourse) GetPage(c *gin.Context) {
 	if req.DisabilityTypeId != 0 {
 		db = db.Where("disability_type_id = ?", req.DisabilityTypeId)
 	}
+	if req.Category != "" {
+		db = db.Where("category = ?", req.Category)
+	}
+	if req.Difficulty != "" {
+		db = db.Where("difficulty = ?", req.Difficulty)
+	}
 	var count int64
 	if err := db.Count(&count).Error; err != nil {
 		e.Error(500, err, "查询失败")
 		return
 	}
-	if err := db.Order("id desc").Limit(req.GetPageSize()).Offset((req.GetPageIndex() - 1) * req.GetPageSize()).Find(&list).Error; err != nil {
+	if err := db.Order("sort desc,id desc").Limit(req.GetPageSize()).Offset((req.GetPageIndex() - 1) * req.GetPageSize()).Find(&list).Error; err != nil {
 		e.Error(500, err, "查询失败")
 		return
 	}
@@ -107,12 +115,18 @@ func (e EduCourse) PublicGetPage(c *gin.Context) {
 	if req.DisabilityTypeId != 0 {
 		db = db.Where("disability_type_id = ?", req.DisabilityTypeId)
 	}
+	if req.Category != "" {
+		db = db.Where("category = ?", req.Category)
+	}
+	if req.Difficulty != "" {
+		db = db.Where("difficulty = ?", req.Difficulty)
+	}
 	var count int64
 	if err := db.Count(&count).Error; err != nil {
 		e.Error(500, err, "查询失败")
 		return
 	}
-	if err := db.Order("id desc").Limit(req.GetPageSize()).Offset((req.GetPageIndex() - 1) * req.GetPageSize()).Find(&list).Error; err != nil {
+	if err := db.Order("sort desc,id desc").Limit(req.GetPageSize()).Offset((req.GetPageIndex() - 1) * req.GetPageSize()).Find(&list).Error; err != nil {
 		e.Error(500, err, "查询失败")
 		return
 	}

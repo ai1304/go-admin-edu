@@ -76,6 +76,36 @@
             </a-form-item>
           </a-col>
           <a-col :span="12">
+            <a-form-item field="stage" label="学段">
+              <a-input v-model="formModel.stage" placeholder="如：小学 / 高等教育" />
+            </a-form-item>
+          </a-col>
+          <a-col :span="12">
+            <a-form-item field="abilityDomain" label="能力领域">
+              <a-input v-model="formModel.abilityDomain" placeholder="如：语言沟通 / 社会适应" />
+            </a-form-item>
+          </a-col>
+          <a-col :span="12">
+            <a-form-item field="caseType" label="案例类型">
+              <a-input v-model="formModel.caseType" placeholder="如：IEP / 行为干预" />
+            </a-form-item>
+          </a-col>
+          <a-col :span="12">
+            <a-form-item field="school" label="学校">
+              <a-input v-model="formModel.school" placeholder="请输入学校" />
+            </a-form-item>
+          </a-col>
+          <a-col :span="12">
+            <a-form-item field="coverUrl" label="封面地址">
+              <a-input v-model="formModel.coverUrl" placeholder="可填写外部图片 URL" />
+            </a-form-item>
+          </a-col>
+          <a-col :span="12">
+            <a-form-item field="sort" label="门户排序">
+              <a-input-number v-model="formModel.sort" :min="0" style="width: 100%" />
+            </a-form-item>
+          </a-col>
+          <a-col :span="12">
             <a-form-item field="status" label="状态">
               <a-select v-model="formModel.status">
                 <a-option v-for="item in statusOptions" :key="item.value" :value="item.value">{{ item.label }}</a-option>
@@ -548,6 +578,7 @@ const columns = [
   { title: '案例名称', dataIndex: 'title', ellipsis: true, tooltip: true },
   { title: '学生姓名', dataIndex: 'studentName', width: 120 },
   { title: '学生编号', dataIndex: 'studentCode', width: 130 },
+  { title: '案例类型', dataIndex: 'caseType', width: 120 },
   { title: '障碍类型', dataIndex: 'disabilityType', width: 130 },
   { title: '状态', slotName: 'status', width: 110 },
   { title: '操作', slotName: 'operations', width: 220 }
@@ -610,9 +641,15 @@ function defaultForm() {
     studentCode: '',
     gender: '',
     birthday: '',
+    stage: '',
     disabilityType: '',
+    abilityDomain: '',
+    caseType: '',
+    school: '',
+    coverUrl: '',
     summary: '',
-    status: 'draft'
+    status: 'draft',
+    sort: 0
   };
 }
 

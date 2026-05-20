@@ -4,12 +4,23 @@ type EduActivity struct {
 	BaseModel
 	Title       string `json:"title" gorm:"size:255;not null;index;comment:活动名称"`
 	Summary     string `json:"summary" gorm:"size:1024;comment:活动简介"`
+	CoverFileId int    `json:"coverFileId" gorm:"index;comment:封面文件ID"`
+	CoverUrl    string `json:"coverUrl" gorm:"size:512;comment:外部封面地址"`
 	StartTime   string `json:"startTime" gorm:"size:32;index;comment:开始时间"`
 	EndTime     string `json:"endTime" gorm:"size:32;comment:结束时间"`
 	Location    string `json:"location" gorm:"size:255;comment:地点"`
 	Organizer   string `json:"organizer" gorm:"size:128;comment:主办方"`
+	School      string `json:"school" gorm:"size:150;comment:学校"`
+	Teacher     string `json:"teacher" gorm:"size:64;comment:教师"`
+	Edition     string `json:"edition" gorm:"size:64;index;comment:届数"`
+	AwardLevel  string `json:"awardLevel" gorm:"size:64;index;comment:获奖等级"`
+	Track       string `json:"track" gorm:"size:128;index;comment:赛道"`
+	SchoolType  string `json:"schoolType" gorm:"size:64;index;comment:学校类型"`
+	TitleRank   string `json:"titleRank" gorm:"size:64;index;comment:职称"`
 	Status      string `json:"status" gorm:"size:32;default:draft;index;comment:状态"`
 	SignupCount int64  `json:"signupCount" gorm:"default:0;comment:报名人数"`
+	ViewCount   int64  `json:"viewCount" gorm:"default:0;comment:浏览量"`
+	Sort        int    `json:"sort" gorm:"default:0;comment:排序"`
 }
 
 func (*EduActivity) TableName() string {

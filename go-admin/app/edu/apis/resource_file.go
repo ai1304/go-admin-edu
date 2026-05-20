@@ -165,7 +165,9 @@ func (e EduResourceFile) PublicAccessURL(c *gin.Context) {
 		return
 	}
 
-	_ = e.Orm.Model(&models.EduResource{}).Where("id = ?", resource.Id).UpdateColumn("download_count", gorm.Expr("download_count + ?", 1)).Error
+	if c.Query("purpose") == "download" || c.Query("download") == "1" {
+		_ = e.Orm.Model(&models.EduResource{}).Where("id = ?", resource.Id).UpdateColumn("download_count", gorm.Expr("download_count + ?", 1)).Error
+	}
 	e.OK(gin.H{
 		"url":       url,
 		"expiresIn": int(expires.Seconds()),

@@ -5,10 +5,15 @@
         <h1>资源中心</h1>
         <p>按学段、障碍类型、资源类型和能力领域筛选优质特教资源。</p>
       </div>
-      <a-input-search v-model="query.keyword" placeholder="搜索标题、简介、关键词、作者" search-button @search="searchResources" />
+      <div class="heading-actions">
+        <a-input-search v-model="query.keyword" placeholder="搜索标题、简介、关键词、作者" search-button @search="searchResources" />
+        <router-link to="/teacher/workbench">
+          <a-button type="primary">上传资源</a-button>
+        </router-link>
+      </div>
     </section>
 
-    <section class="filter-panel">
+    <section class="filter-panel resource-filter">
       <a-form :model="query" layout="inline">
         <a-form-item label="学段">
           <a-select v-model="query.stageCategoryId" allow-clear placeholder="全部学段" style="width: 150px" @change="searchResources">
@@ -28,6 +33,11 @@
         <a-form-item label="能力领域">
           <a-select v-model="query.abilityDomainId" allow-clear placeholder="全部领域" style="width: 160px" @change="searchResources">
             <a-option v-for="item in categoryOptions.ability_domain" :key="item.id" :value="item.id">{{ item.name }}</a-option>
+          </a-select>
+        </a-form-item>
+        <a-form-item label="专题分类">
+          <a-select v-model="query.topicCategoryId" allow-clear placeholder="全部专题" style="width: 150px" @change="searchResources">
+            <a-option v-for="item in categoryOptions.topic" :key="item.id" :value="item.id">{{ item.name }}</a-option>
           </a-select>
         </a-form-item>
         <a-form-item label="标签">
@@ -68,7 +78,7 @@
               <a-tag v-if="categoryName(item.resourceTypeId, 'resource_type')" color="blue">{{ categoryName(item.resourceTypeId, 'resource_type') }}</a-tag>
               <a-tag v-for="tag in item.tags || []" :key="tag.id" color="arcoblue">{{ tag.name }}</a-tag>
             </div>
-            <small>{{ item.authorName || "平台资源" }} · {{ item.viewCount || 0 }} 浏览 · {{ item.downloadCount || 0 }} 下载</small>
+            <small>{{ item.authorName || "平台资源" }} · {{ item.viewCount || 0 }} 浏览 · {{ item.downloadCount || 0 }} 下载 · {{ item.favoriteCount || 0 }} 收藏</small>
           </div>
         </router-link>
       </div>
@@ -83,10 +93,12 @@
 
 <script setup>
 import { onMounted, reactive, ref } from "vue";
+import { useRoute } from "vue-router";
 import PortalLayout from "@/layouts/PortalLayout.vue";
 import { getResourceCategories, getResourceTags, searchPublishedResources } from "@/api/resources";
 
 const loading = ref(false);
+const route = useRoute();
 const resources = ref([]);
 const total = ref(0);
 const tagOptions = ref([]);
@@ -97,6 +109,7 @@ const query = reactive({
   disabilityTypeId: undefined,
   resourceTypeId: undefined,
   abilityDomainId: undefined,
+  topicCategoryId: undefined,
   sort: "latest",
   pageIndex: 1,
   pageSize: 12
@@ -125,6 +138,7 @@ async function fetchCategories() {
     }
     categoryOptions[item.type].push(item);
   });
+  applyRouteFilters();
 }
 
 async function fetchTags() {
@@ -157,6 +171,7 @@ function resetFilters() {
   query.disabilityTypeId = undefined;
   query.resourceTypeId = undefined;
   query.abilityDomainId = undefined;
+  query.topicCategoryId = undefined;
   query.sort = "latest";
   query.pageIndex = 1;
   fetchResources();
@@ -171,6 +186,23 @@ function categoryName(id, type) {
   return (categoryOptions[type] || []).find((item) => item.id === id)?.name || "";
 }
 
+function applyRouteFilters() {
+  if (route.query.keyword) {
+    query.keyword = String(route.query.keyword);
+  }
+  if (route.query.sort) {
+    query.sort = String(route.query.sort);
+  }
+  if (route.query.type === "case") {
+    const caseCategory = (categoryOptions.resource_type || []).find((item) => item.name.includes("案例"));
+    if (caseCategory) {
+      query.resourceTypeId = caseCategory.id;
+    } else {
+      query.keyword = query.keyword || "案例";
+    }
+  }
+}
+
 onMounted(async () => {
   await Promise.all([fetchCategories(), fetchTags()]);
   await fetchResources();
@@ -183,12 +215,23 @@ onMounted(async () => {
   align-items: end;
 }
 
+.heading-actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+}
+
 .filter-panel {
   margin-bottom: 18px;
   padding: 16px;
   background: #fff;
   border: 1px solid #e5e6eb;
   border-radius: 8px;
+}
+
+.resource-filter :deep(.arco-form) {
+  row-gap: 10px;
 }
 
 .resource-grid {

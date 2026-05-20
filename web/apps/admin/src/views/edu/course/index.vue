@@ -59,10 +59,20 @@
             </a-form-item>
           </a-col>
           <a-col :span="12">
+            <a-form-item field="category" label="课程分类">
+              <a-input v-model="formModel.category" placeholder="如：融合教育 / IEP 编制 / 辅助技术" />
+            </a-form-item>
+          </a-col>
+          <a-col :span="12">
             <a-form-item field="status" label="状态">
               <a-select v-model="formModel.status">
                 <a-option v-for="item in statusOptions" :key="item.value" :value="item.value">{{ item.label }}</a-option>
               </a-select>
+            </a-form-item>
+          </a-col>
+          <a-col :span="12">
+            <a-form-item field="sort" label="门户排序">
+              <a-input-number v-model="formModel.sort" :min="0" style="width: 100%" />
             </a-form-item>
           </a-col>
           <a-col :span="12">
@@ -415,6 +425,7 @@ const recordModel = reactive(defaultRecordForm());
 const columns = [
   { title: '课程标题', dataIndex: 'title', ellipsis: true, tooltip: true },
   { title: '教师', dataIndex: 'teacherName', width: 120 },
+  { title: '分类', dataIndex: 'category', width: 120 },
   { title: '难度', dataIndex: 'difficulty', width: 100 },
   { title: '状态', slotName: 'status', width: 110 },
   { title: '学习人数', dataIndex: 'learnerCount', width: 110 },
@@ -462,11 +473,13 @@ function defaultForm() {
     title: '',
     summary: '',
     teacherName: '',
+    category: '',
     difficulty: '',
     objectives: '',
     status: 'draft',
     stageCategoryId: undefined,
-    disabilityTypeId: undefined
+    disabilityTypeId: undefined,
+    sort: 0
   };
 }
 

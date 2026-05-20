@@ -1,10 +1,11 @@
 import axios from 'axios';
 import { Message } from '@arco-design/web-vue';
 import { useUserStore } from '../store/userInfo'
+import router from '../router'
 
 // create an axios instance
 const service = axios.create({
-  baseUrl: import.meta.env.VITE_APP_BASE_URL,
+  baseURL: import.meta.env.VITE_APP_BASE_URL || '',
   timeout: 8000,
 });
 

@@ -19,8 +19,11 @@ type EduExpert struct {
 
 type expertQuery struct {
 	dto.Pagination
-	Keyword string `form:"keyword"`
-	Status  int    `form:"status"`
+	Keyword       string `form:"keyword"`
+	Title         string `form:"title"`
+	Specialty     string `form:"specialty"`
+	IsRecommended int    `form:"isRecommended"`
+	Status        int    `form:"status"`
 }
 
 type expertFavoriteReq struct {
@@ -39,7 +42,16 @@ func (e EduExpert) GetPage(c *gin.Context) {
 	db := e.Orm.Model(&models.EduExpert{})
 	if req.Keyword != "" {
 		like := "%" + req.Keyword + "%"
-		db = db.Where("name like ? or title like ? or specialties like ?", like, like, like)
+		db = db.Where("name like ? or title like ? or organization like ? or specialties like ?", like, like, like, like)
+	}
+	if req.Title != "" {
+		db = db.Where("title = ?", req.Title)
+	}
+	if req.Specialty != "" {
+		db = db.Where("specialties like ?", "%"+req.Specialty+"%")
+	}
+	if req.IsRecommended != 0 {
+		db = db.Where("is_recommended = ?", req.IsRecommended)
 	}
 	if req.Status != 0 {
 		db = db.Where("status = ?", req.Status)
@@ -49,7 +61,7 @@ func (e EduExpert) GetPage(c *gin.Context) {
 		e.Error(500, err, "查询失败")
 		return
 	}
-	if err := db.Order("id desc").Limit(req.GetPageSize()).Offset((req.GetPageIndex() - 1) * req.GetPageSize()).Find(&list).Error; err != nil {
+	if err := db.Order("is_recommended desc,sort desc,id desc").Limit(req.GetPageSize()).Offset((req.GetPageIndex() - 1) * req.GetPageSize()).Find(&list).Error; err != nil {
 		e.Error(500, err, "查询失败")
 		return
 	}
@@ -67,14 +79,23 @@ func (e EduExpert) PublicGetPage(c *gin.Context) {
 	db := e.Orm.Model(&models.EduExpert{}).Where("status = ?", 1)
 	if req.Keyword != "" {
 		like := "%" + req.Keyword + "%"
-		db = db.Where("name like ? or title like ? or specialties like ?", like, like, like)
+		db = db.Where("name like ? or title like ? or organization like ? or specialties like ?", like, like, like, like)
+	}
+	if req.Title != "" {
+		db = db.Where("title = ?", req.Title)
+	}
+	if req.Specialty != "" {
+		db = db.Where("specialties like ?", "%"+req.Specialty+"%")
+	}
+	if req.IsRecommended != 0 {
+		db = db.Where("is_recommended = ?", req.IsRecommended)
 	}
 	var count int64
 	if err := db.Count(&count).Error; err != nil {
 		e.Error(500, err, "查询失败")
 		return
 	}
-	if err := db.Order("id desc").Limit(req.GetPageSize()).Offset((req.GetPageIndex() - 1) * req.GetPageSize()).Find(&list).Error; err != nil {
+	if err := db.Order("is_recommended desc,sort desc,id desc").Limit(req.GetPageSize()).Offset((req.GetPageIndex() - 1) * req.GetPageSize()).Find(&list).Error; err != nil {
 		e.Error(500, err, "查询失败")
 		return
 	}

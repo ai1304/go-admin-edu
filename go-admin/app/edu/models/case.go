@@ -3,13 +3,21 @@ package models
 type EduCase struct {
 	BaseModel
 	Title          string `json:"title" gorm:"size:255;not null;index;comment:案例名称"`
+	CoverFileId    int    `json:"coverFileId" gorm:"index;comment:封面文件ID"`
+	CoverUrl       string `json:"coverUrl" gorm:"size:512;comment:外部封面地址"`
 	StudentName    string `json:"studentName" gorm:"size:128;comment:学生姓名"`
 	StudentCode    string `json:"studentCode" gorm:"size:64;index;comment:学生编号"`
 	Gender         string `json:"gender" gorm:"size:16;comment:性别"`
 	Birthday       string `json:"birthday" gorm:"size:32;comment:生日"`
-	DisabilityType string `json:"disabilityType" gorm:"size:128;comment:障碍类型"`
+	Stage          string `json:"stage" gorm:"size:64;index;comment:学段"`
+	DisabilityType string `json:"disabilityType" gorm:"size:128;index;comment:障碍类型"`
+	AbilityDomain  string `json:"abilityDomain" gorm:"size:128;index;comment:能力领域"`
+	CaseType       string `json:"caseType" gorm:"size:128;index;comment:案例类型"`
+	School         string `json:"school" gorm:"size:150;comment:学校"`
 	Summary        string `json:"summary" gorm:"size:1024;comment:案例摘要"`
 	Status         string `json:"status" gorm:"size:32;default:draft;index;comment:状态"`
+	ViewCount      int64  `json:"viewCount" gorm:"default:0;comment:浏览量"`
+	Sort           int    `json:"sort" gorm:"default:0;comment:排序"`
 }
 
 func (*EduCase) TableName() string {

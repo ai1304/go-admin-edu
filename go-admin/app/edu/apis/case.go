@@ -24,10 +24,14 @@ type EduCase struct {
 
 type caseQuery struct {
 	dto.Pagination
-	Keyword     string `form:"keyword"`
-	Status      string `form:"status"`
-	SchoolId    int    `form:"schoolId"`
-	Desensitize bool   `form:"desensitize"`
+	Keyword        string `form:"keyword"`
+	Status         string `form:"status"`
+	SchoolId       int    `form:"schoolId"`
+	Stage          string `form:"stage"`
+	DisabilityType string `form:"disabilityType"`
+	AbilityDomain  string `form:"abilityDomain"`
+	CaseType       string `form:"caseType"`
+	Desensitize    bool   `form:"desensitize"`
 }
 
 type caseAccessLogQuery struct {
@@ -231,12 +235,24 @@ func (e EduCase) GetPage(c *gin.Context) {
 	if req.SchoolId != 0 {
 		db = db.Where("school_id = ?", req.SchoolId)
 	}
+	if req.Stage != "" {
+		db = db.Where("stage = ?", req.Stage)
+	}
+	if req.DisabilityType != "" {
+		db = db.Where("disability_type = ?", req.DisabilityType)
+	}
+	if req.AbilityDomain != "" {
+		db = db.Where("ability_domain = ?", req.AbilityDomain)
+	}
+	if req.CaseType != "" {
+		db = db.Where("case_type = ?", req.CaseType)
+	}
 	var count int64
 	if err := db.Count(&count).Error; err != nil {
 		e.Error(500, err, "查询失败")
 		return
 	}
-	if err := db.Order("id desc").Limit(req.GetPageSize()).Offset((req.GetPageIndex() - 1) * req.GetPageSize()).Find(&list).Error; err != nil {
+	if err := db.Order("sort desc,id desc").Limit(req.GetPageSize()).Offset((req.GetPageIndex() - 1) * req.GetPageSize()).Find(&list).Error; err != nil {
 		e.Error(500, err, "查询失败")
 		return
 	}
@@ -244,6 +260,69 @@ func (e EduCase) GetPage(c *gin.Context) {
 		desensitizeCases(list)
 	}
 	e.PageOK(list, int(count), req.GetPageIndex(), req.GetPageSize(), "查询成功")
+}
+
+func (e EduCase) PublicGetPage(c *gin.Context) {
+	req := caseQuery{}
+	if err := e.MakeContext(c).MakeOrm().Errors; err != nil {
+		e.Error(500, err, err.Error())
+		return
+	}
+	_ = c.ShouldBindQuery(&req)
+	list := make([]models.EduCase, 0)
+	db := e.Orm.Model(&models.EduCase{}).Where("status = ?", "published")
+	if req.Keyword != "" {
+		like := "%" + req.Keyword + "%"
+		db = db.Where("title like ? or summary like ? or school like ? or disability_type like ?", like, like, like, like)
+	}
+	if req.Stage != "" {
+		db = db.Where("stage = ?", req.Stage)
+	}
+	if req.DisabilityType != "" {
+		db = db.Where("disability_type = ?", req.DisabilityType)
+	}
+	if req.AbilityDomain != "" {
+		db = db.Where("ability_domain = ?", req.AbilityDomain)
+	}
+	if req.CaseType != "" {
+		db = db.Where("case_type = ?", req.CaseType)
+	}
+	var count int64
+	if err := db.Count(&count).Error; err != nil {
+		e.Error(500, err, "查询失败")
+		return
+	}
+	if err := db.Order("sort desc,id desc").Limit(req.GetPageSize()).Offset((req.GetPageIndex() - 1) * req.GetPageSize()).Find(&list).Error; err != nil {
+		e.Error(500, err, "查询失败")
+		return
+	}
+	desensitizeCases(list)
+	e.PageOK(list, int(count), req.GetPageIndex(), req.GetPageSize(), "查询成功")
+}
+
+func (e EduCase) PublicGet(c *gin.Context) {
+	if err := e.MakeContext(c).MakeOrm().Errors; err != nil {
+		e.Error(500, err, err.Error())
+		return
+	}
+	var data models.EduCase
+	if err := e.Orm.Where("status = ?", "published").First(&data, c.Param("id")).Error; err != nil {
+		e.Error(404, err, "case not found")
+		return
+	}
+	ieps := make([]models.EduCaseIEP, 0)
+	assessments := make([]models.EduCaseAssessment, 0)
+	interventions := make([]models.EduCaseIntervention, 0)
+	_ = e.Orm.Where("case_id = ?", data.Id).Order("id desc").Find(&ieps).Error
+	_ = e.Orm.Where("case_id = ?", data.Id).Order("id desc").Find(&assessments).Error
+	_ = e.Orm.Where("case_id = ?", data.Id).Order("id desc").Find(&interventions).Error
+	_ = e.Orm.Model(&models.EduCase{}).Where("id = ?", data.Id).UpdateColumn("view_count", gorm.Expr("view_count + ?", 1)).Error
+	data.ViewCount++
+	desensitizeCase(&data)
+	desensitizeIEPs(ieps)
+	desensitizeAssessments(assessments)
+	desensitizeInterventions(interventions)
+	e.OK(gin.H{"case": data, "ieps": ieps, "assessments": assessments, "interventions": interventions}, "查询成功")
 }
 
 func (e EduCase) Get(c *gin.Context) {
