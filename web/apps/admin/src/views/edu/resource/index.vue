@@ -18,10 +18,10 @@
         </a-form-item>
         <a-form-item>
           <a-space>
-            <a-button type="primary" @click="fetchData">查询</a-button>
+            <a-button v-has="'edu:resource:query'" type="primary" @click="fetchData">查询</a-button>
             <a-button @click="resetQuery">重置</a-button>
-            <a-button type="primary" status="success" @click="openCreate">新增资源</a-button>
-            <a-button @click="handleSearchReindex">同步搜索</a-button>
+            <a-button v-has="'edu:resource:add'" type="primary" status="success" @click="openCreate">新增资源</a-button>
+            <a-button v-has="'edu:resource:search'" @click="handleSearchReindex">同步搜索</a-button>
           </a-space>
         </a-form-item>
       </a-form>
@@ -40,16 +40,16 @@
         </template>
         <template #operations="{ record }">
           <a-space wrap>
-            <a-button type="text" size="small" @click="openEdit(record)">编辑</a-button>
-            <a-button type="text" size="small" @click="openFiles(record)">附件</a-button>
-            <a-button type="text" size="small" @click="openComments(record)">评论</a-button>
-            <a-button type="text" size="small" @click="openReviews(record)">记录</a-button>
-            <a-button v-if="record.status === 'draft' || record.status === 'rejected'" type="text" size="small" @click="handleSubmitReview(record)">提交审核</a-button>
-            <a-button v-if="record.status === 'reviewing'" type="text" size="small" @click="handleReview(record, 'approve')">通过</a-button>
-            <a-button v-if="record.status === 'reviewing'" type="text" status="warning" size="small" @click="handleReview(record, 'reject')">驳回</a-button>
-            <a-button v-if="record.status === 'published'" type="text" status="warning" size="small" @click="handleStatusChange(record, 'offline')">下架</a-button>
-            <a-button v-if="record.status === 'offline'" type="text" status="success" size="small" @click="handleStatusChange(record, 'published')">恢复发布</a-button>
-            <a-button type="text" status="danger" size="small" @click="handleDelete(record)">删除</a-button>
+            <a-button v-has="'edu:resource:edit'" type="text" size="small" @click="openEdit(record)">编辑</a-button>
+            <a-button v-has="'edu:resource:files'" type="text" size="small" @click="openFiles(record)">附件</a-button>
+            <a-button v-has="'edu:resource:comments'" type="text" size="small" @click="openComments(record)">评论</a-button>
+            <a-button v-has="'edu:resource:review'" type="text" size="small" @click="openReviews(record)">记录</a-button>
+            <a-button v-if="record.status === 'draft' || record.status === 'rejected'" v-has="'edu:resource:review'" type="text" size="small" @click="handleSubmitReview(record)">提交审核</a-button>
+            <a-button v-if="record.status === 'reviewing'" v-has="'edu:resource:review'" type="text" size="small" @click="handleReview(record, 'approve')">通过</a-button>
+            <a-button v-if="record.status === 'reviewing'" v-has="'edu:resource:review'" type="text" status="warning" size="small" @click="handleReview(record, 'reject')">驳回</a-button>
+            <a-button v-if="record.status === 'published'" v-has="'edu:resource:status'" type="text" status="warning" size="small" @click="handleStatusChange(record, 'offline')">下架</a-button>
+            <a-button v-if="record.status === 'offline'" v-has="'edu:resource:status'" type="text" status="success" size="small" @click="handleStatusChange(record, 'published')">恢复发布</a-button>
+            <a-button v-has="'edu:resource:remove'" type="text" status="danger" size="small" @click="handleDelete(record)">删除</a-button>
           </a-space>
         </template>
       </a-table>
@@ -139,8 +139,8 @@
     <a-modal v-model:visible="fileVisible" :title="`${currentResource?.title || ''} 附件`" width="760px" :footer="false">
       <a-space direction="vertical" fill>
         <a-space>
-          <a-button type="primary" @click="triggerUpload('attachment')">上传附件</a-button>
-          <a-button @click="triggerUpload('cover')">上传封面</a-button>
+          <a-button v-has="'edu:resource:files'" type="primary" @click="triggerUpload('attachment')">上传附件</a-button>
+          <a-button v-has="'edu:resource:files'" @click="triggerUpload('cover')">上传封面</a-button>
           <a-tag v-if="currentResource?.coverFileId" color="blue">当前封面文件 ID：{{ currentResource.coverFileId }}</a-tag>
           <input ref="fileInput" type="file" class="hidden-file-input" @change="handleFileChange" />
         </a-space>
@@ -150,7 +150,7 @@
           </template>
           <template #size="{ record }">{{ formatSize(record.size) }}</template>
           <template #fileOperations="{ record }">
-            <a-button type="text" status="danger" size="small" @click="handleDeleteFile(record)">删除</a-button>
+            <a-button v-has="'edu:resource:files'" type="text" status="danger" size="small" @click="handleDeleteFile(record)">删除</a-button>
           </template>
         </a-table>
       </a-space>
@@ -163,8 +163,8 @@
         </template>
         <template #commentOperations="{ record }">
           <a-space>
-            <a-button type="text" size="small" @click="toggleCommentStatus(record)">{{ record.status === 1 ? '隐藏' : '显示' }}</a-button>
-            <a-button type="text" status="danger" size="small" @click="handleDeleteComment(record)">删除</a-button>
+            <a-button v-has="'edu:resource:comments'" type="text" size="small" @click="toggleCommentStatus(record)">{{ record.status === 1 ? '隐藏' : '显示' }}</a-button>
+            <a-button v-has="'edu:resource:comments'" type="text" status="danger" size="small" @click="handleDeleteComment(record)">删除</a-button>
           </a-space>
         </template>
       </a-table>

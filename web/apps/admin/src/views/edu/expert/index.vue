@@ -8,9 +8,9 @@
         </a-form-item>
         <a-form-item>
           <a-space>
-            <a-button type="primary" @click="fetchData">查询</a-button>
+            <a-button v-has="'edu:expert:query'" type="primary" @click="fetchData">查询</a-button>
             <a-button @click="resetQuery">重置</a-button>
-            <a-button type="primary" status="success" @click="openCreate">新增专家</a-button>
+            <a-button v-has="'edu:expert:add'" type="primary" status="success" @click="openCreate">新增专家</a-button>
           </a-space>
         </a-form-item>
       </a-form>
@@ -23,9 +23,9 @@
         </template>
         <template #operations="{ record }">
           <a-space>
-            <a-button type="text" size="small" @click="openEdit(record)">编辑</a-button>
-            <a-button type="text" size="small" @click="openResources(record)">资源</a-button>
-            <a-button type="text" status="danger" size="small" @click="handleDelete(record)">删除</a-button>
+            <a-button v-has="'edu:expert:edit'" type="text" size="small" @click="openEdit(record)">编辑</a-button>
+            <a-button v-has="'edu:expert:resources'" type="text" size="small" @click="openResources(record)">资源</a-button>
+            <a-button v-has="'edu:expert:remove'" type="text" status="danger" size="small" @click="handleDelete(record)">删除</a-button>
           </a-space>
         </template>
       </a-table>
@@ -73,7 +73,7 @@
 
     <a-modal v-model:visible="resourceVisible" :title="`${currentExpert?.name || ''} 资源管理`" width="960px" :footer="false">
       <a-space direction="vertical" fill>
-        <a-button type="primary" status="success" @click="openResourceCreate">新增关联资源</a-button>
+        <a-button v-has="'edu:expert:resources'" type="primary" status="success" @click="openResourceCreate">新增关联资源</a-button>
         <a-table :columns="resourceColumns" :data="resourceList" :pagination="false" row-key="id">
           <template #type="{ record }">
             <a-tag>{{ resourceTypeText[record.type] || record.type }}</a-tag>
@@ -83,8 +83,8 @@
           </template>
           <template #operations="{ record }">
             <a-space>
-              <a-button type="text" size="small" @click="openResourceEdit(record)">编辑</a-button>
-              <a-button type="text" status="danger" size="small" @click="handleResourceDelete(record)">删除</a-button>
+              <a-button v-has="'edu:expert:resources'" type="text" size="small" @click="openResourceEdit(record)">编辑</a-button>
+              <a-button v-has="'edu:expert:resources'" type="text" status="danger" size="small" @click="handleResourceDelete(record)">删除</a-button>
             </a-space>
           </template>
         </a-table>

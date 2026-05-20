@@ -16,9 +16,9 @@
         </a-form-item>
         <a-form-item>
           <a-space>
-            <a-button type="primary" @click="fetchData">查询</a-button>
+            <a-button v-has="'edu:case:query'" type="primary" @click="fetchData">查询</a-button>
             <a-button @click="resetQuery">重置</a-button>
-            <a-button type="primary" status="success" @click="openCreate">新增案例</a-button>
+            <a-button v-has="'edu:case:add'" type="primary" status="success" @click="openCreate">新增案例</a-button>
           </a-space>
         </a-form-item>
       </a-form>
@@ -31,9 +31,9 @@
         </template>
         <template #operations="{ record }">
           <a-space>
-            <a-button type="text" size="small" @click="openEdit(record)">编辑</a-button>
-            <a-button type="text" size="small" @click="openManage(record)">业务管理</a-button>
-            <a-button type="text" status="danger" size="small" @click="handleDelete(record)">删除</a-button>
+            <a-button v-has="'edu:case:edit'" type="text" size="small" @click="openEdit(record)">编辑</a-button>
+            <a-button v-has="'edu:case:manage'" type="text" size="small" @click="openManage(record)">业务管理</a-button>
+            <a-button v-has="'edu:case:remove'" type="text" status="danger" size="small" @click="handleDelete(record)">删除</a-button>
           </a-space>
         </template>
       </a-table>
@@ -99,15 +99,15 @@
       <a-tabs default-active-key="ieps">
         <a-tab-pane key="ieps" title="IEP">
           <a-space direction="vertical" fill>
-            <a-button type="primary" status="success" @click="openIepCreate">新增 IEP</a-button>
+            <a-button v-has="'edu:case:manage'" type="primary" status="success" @click="openIepCreate">新增 IEP</a-button>
             <a-table :columns="iepColumns" :data="iepList" :pagination="false" row-key="id">
               <template #status="{ record }">
                 <a-tag :color="subStatusColor[record.status]">{{ subStatusText[record.status] || record.status }}</a-tag>
               </template>
               <template #operations="{ record }">
                 <a-space>
-                  <a-button type="text" size="small" @click="openIepEdit(record)">编辑</a-button>
-                  <a-button type="text" status="danger" size="small" @click="handleIepDelete(record)">删除</a-button>
+                  <a-button v-has="'edu:case:manage'" type="text" size="small" @click="openIepEdit(record)">编辑</a-button>
+                  <a-button v-has="'edu:case:manage'" type="text" status="danger" size="small" @click="handleIepDelete(record)">删除</a-button>
                 </a-space>
               </template>
             </a-table>
@@ -115,12 +115,12 @@
         </a-tab-pane>
         <a-tab-pane key="assessments" title="评估记录">
           <a-space direction="vertical" fill>
-            <a-button type="primary" status="success" @click="openAssessmentCreate">新增评估</a-button>
+            <a-button v-has="'edu:case:manage'" type="primary" status="success" @click="openAssessmentCreate">新增评估</a-button>
             <a-table :columns="assessmentColumns" :data="assessmentList" :pagination="false" row-key="id">
               <template #operations="{ record }">
                 <a-space>
-                  <a-button type="text" size="small" @click="openAssessmentEdit(record)">编辑</a-button>
-                  <a-button type="text" status="danger" size="small" @click="handleAssessmentDelete(record)">删除</a-button>
+                  <a-button v-has="'edu:case:manage'" type="text" size="small" @click="openAssessmentEdit(record)">编辑</a-button>
+                  <a-button v-has="'edu:case:manage'" type="text" status="danger" size="small" @click="handleAssessmentDelete(record)">删除</a-button>
                 </a-space>
               </template>
             </a-table>
@@ -128,15 +128,15 @@
         </a-tab-pane>
         <a-tab-pane key="interventions" title="干预方案">
           <a-space direction="vertical" fill>
-            <a-button type="primary" status="success" @click="openInterventionCreate">新增干预</a-button>
+            <a-button v-has="'edu:case:manage'" type="primary" status="success" @click="openInterventionCreate">新增干预</a-button>
             <a-table :columns="interventionColumns" :data="interventionList" :pagination="false" row-key="id">
               <template #status="{ record }">
                 <a-tag :color="interventionStatusColor[record.status]">{{ interventionStatusText[record.status] || record.status }}</a-tag>
               </template>
               <template #operations="{ record }">
                 <a-space>
-                  <a-button type="text" size="small" @click="openInterventionEdit(record)">编辑</a-button>
-                  <a-button type="text" status="danger" size="small" @click="handleInterventionDelete(record)">删除</a-button>
+                  <a-button v-has="'edu:case:manage'" type="text" size="small" @click="openInterventionEdit(record)">编辑</a-button>
+                  <a-button v-has="'edu:case:manage'" type="text" status="danger" size="small" @click="handleInterventionDelete(record)">删除</a-button>
                 </a-space>
               </template>
             </a-table>
@@ -145,8 +145,8 @@
         <a-tab-pane key="attachments" title="案例附件">
           <a-space direction="vertical" fill>
             <a-space>
-              <a-button type="primary" status="success" @click="triggerAttachmentUpload">上传附件</a-button>
-              <a-button @click="openAttachmentCreate">手动关联文件</a-button>
+              <a-button v-has="'edu:case:manage'" type="primary" status="success" @click="triggerAttachmentUpload">上传附件</a-button>
+              <a-button v-has="'edu:case:manage'" @click="openAttachmentCreate">手动关联文件</a-button>
             </a-space>
             <a-table :columns="attachmentColumns" :data="attachmentList" :pagination="false" row-key="id">
               <template #status="{ record }">
@@ -154,8 +154,8 @@
               </template>
               <template #operations="{ record }">
                 <a-space>
-                  <a-button type="text" size="small" @click="handleAttachmentOpen(record)">打开</a-button>
-                  <a-button type="text" status="danger" size="small" @click="handleAttachmentDelete(record)">删除</a-button>
+                  <a-button v-has="'edu:case:manage'" type="text" size="small" @click="handleAttachmentOpen(record)">打开</a-button>
+                  <a-button v-has="'edu:case:manage'" type="text" status="danger" size="small" @click="handleAttachmentDelete(record)">删除</a-button>
                 </a-space>
               </template>
             </a-table>
@@ -164,9 +164,9 @@
         <a-tab-pane key="reviews" title="案例审核">
           <a-space direction="vertical" fill>
             <a-space>
-              <a-button type="primary" status="warning" @click="handleSubmitReview">提交审核</a-button>
-              <a-button type="primary" status="success" @click="openReviewAction('approve')">审核通过</a-button>
-              <a-button status="danger" @click="openReviewAction('reject')">审核驳回</a-button>
+              <a-button v-has="'edu:case:review'" type="primary" status="warning" @click="handleSubmitReview">提交审核</a-button>
+              <a-button v-has="'edu:case:review'" type="primary" status="success" @click="openReviewAction('approve')">审核通过</a-button>
+              <a-button v-has="'edu:case:review'" status="danger" @click="openReviewAction('reject')">审核驳回</a-button>
             </a-space>
             <a-table :columns="reviewColumns" :data="reviewList" :pagination="false" row-key="id">
               <template #action="{ record }">{{ reviewActionText[record.action] || record.action }}</template>
@@ -193,9 +193,9 @@
               </a-form-item>
               <a-form-item>
                 <a-space>
-                  <a-button type="primary" @click="searchAuthorizations">查询</a-button>
+                  <a-button v-has="'edu:case:authorization'" type="primary" @click="searchAuthorizations">查询</a-button>
                   <a-button @click="resetAuthorizationQuery">重置</a-button>
-                  <a-button type="primary" status="success" @click="openAuthorizationCreate">新增授权</a-button>
+                  <a-button v-has="'edu:case:authorization'" type="primary" status="success" @click="openAuthorizationCreate">新增授权</a-button>
                 </a-space>
               </a-form-item>
             </a-form>
@@ -212,8 +212,8 @@
               </template>
               <template #operations="{ record }">
                 <a-space>
-                  <a-button type="text" size="small" @click="openAuthorizationEdit(record)">编辑</a-button>
-                  <a-button type="text" status="danger" size="small" @click="handleAuthorizationDelete(record)">删除</a-button>
+                  <a-button v-has="'edu:case:authorization'" type="text" size="small" @click="openAuthorizationEdit(record)">编辑</a-button>
+                  <a-button v-has="'edu:case:authorization'" type="text" status="danger" size="small" @click="handleAuthorizationDelete(record)">删除</a-button>
                 </a-space>
               </template>
             </a-table>
@@ -235,9 +235,9 @@
               </a-form-item>
               <a-form-item>
                 <a-space>
-                  <a-button type="primary" @click="searchAccessLogs">查询</a-button>
+                  <a-button v-has="'edu:case:accessLog'" type="primary" @click="searchAccessLogs">查询</a-button>
                   <a-button @click="resetAccessLogQuery">重置</a-button>
-                  <a-button @click="handleAccessLogExport">导出</a-button>
+                  <a-button v-has="'edu:case:export'" @click="handleAccessLogExport">导出</a-button>
                 </a-space>
               </a-form-item>
             </a-form>

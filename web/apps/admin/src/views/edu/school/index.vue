@@ -11,9 +11,9 @@
         </a-form-item>
         <a-form-item>
           <a-space>
-            <a-button type="primary" @click="fetchData">查询</a-button>
+            <a-button v-has="'edu:school:query'" type="primary" @click="fetchData">查询</a-button>
             <a-button @click="resetQuery">重置</a-button>
-            <a-button type="primary" status="success" @click="openCreate">新增学校</a-button>
+            <a-button v-has="'edu:school:add'" type="primary" status="success" @click="openCreate">新增学校</a-button>
           </a-space>
         </a-form-item>
       </a-form>
@@ -26,8 +26,8 @@
         </template>
         <template #operations="{ record }">
           <a-space>
-            <a-button type="text" size="small" @click="openEdit(record)">编辑</a-button>
-            <a-button type="text" status="danger" size="small" @click="handleDelete(record)">删除</a-button>
+            <a-button v-has="'edu:school:edit'" type="text" size="small" @click="openEdit(record)">编辑</a-button>
+            <a-button v-has="'edu:school:remove'" type="text" status="danger" size="small" @click="handleDelete(record)">删除</a-button>
           </a-space>
         </template>
       </a-table>

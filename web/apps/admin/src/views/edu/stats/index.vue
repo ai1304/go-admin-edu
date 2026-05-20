@@ -3,8 +3,8 @@
     <a-card :bordered="false" class="cardStyle">
       <template #title>数据中心</template>
       <a-space>
-        <a-button type="primary" @click="fetchData">刷新</a-button>
-        <a-button @click="handleExport">导出概览 CSV</a-button>
+        <a-button v-has="'edu:stats:query'" type="primary" @click="fetchData">刷新</a-button>
+        <a-button v-has="'edu:stats:export'" @click="handleExport">导出概览 CSV</a-button>
       </a-space>
     </a-card>
 

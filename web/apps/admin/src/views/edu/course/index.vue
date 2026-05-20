@@ -13,9 +13,9 @@
         </a-form-item>
         <a-form-item>
           <a-space>
-            <a-button type="primary" @click="fetchData">查询</a-button>
+            <a-button v-has="'edu:course:query'" type="primary" @click="fetchData">查询</a-button>
             <a-button @click="resetQuery">重置</a-button>
-            <a-button type="primary" status="success" @click="openCreate">新增课程</a-button>
+            <a-button v-has="'edu:course:add'" type="primary" status="success" @click="openCreate">新增课程</a-button>
           </a-space>
         </a-form-item>
       </a-form>
@@ -28,9 +28,9 @@
         </template>
         <template #operations="{ record }">
           <a-space>
-            <a-button type="text" size="small" @click="openEdit(record)">编辑</a-button>
-            <a-button type="text" size="small" @click="openStructure(record)">章节/课时</a-button>
-            <a-button type="text" status="danger" size="small" @click="handleDelete(record)">删除</a-button>
+            <a-button v-has="'edu:course:edit'" type="text" size="small" @click="openEdit(record)">编辑</a-button>
+            <a-button v-has="'edu:course:manage'" type="text" size="small" @click="openStructure(record)">章节/课时</a-button>
+            <a-button v-has="'edu:course:remove'" type="text" status="danger" size="small" @click="handleDelete(record)">删除</a-button>
           </a-space>
         </template>
       </a-table>
@@ -97,15 +97,15 @@
       <a-tabs default-active-key="chapters">
         <a-tab-pane key="chapters" title="章节">
           <a-space direction="vertical" fill>
-            <a-button type="primary" status="success" @click="openChapterCreate">新增章节</a-button>
+            <a-button v-has="'edu:course:manage'" type="primary" status="success" @click="openChapterCreate">新增章节</a-button>
             <a-table :columns="chapterColumns" :data="chapterList" :pagination="false" row-key="id">
               <template #status="{ record }">
                 <a-tag :color="record.status === 1 ? 'green' : 'gray'">{{ record.status === 1 ? '启用' : '停用' }}</a-tag>
               </template>
               <template #operations="{ record }">
                 <a-space>
-                  <a-button type="text" size="small" @click="openChapterEdit(record)">编辑</a-button>
-                  <a-button type="text" status="danger" size="small" @click="handleChapterDelete(record)">删除</a-button>
+                  <a-button v-has="'edu:course:manage'" type="text" size="small" @click="openChapterEdit(record)">编辑</a-button>
+                  <a-button v-has="'edu:course:manage'" type="text" status="danger" size="small" @click="handleChapterDelete(record)">删除</a-button>
                 </a-space>
               </template>
             </a-table>
@@ -113,7 +113,7 @@
         </a-tab-pane>
         <a-tab-pane key="lessons" title="课时">
           <a-space direction="vertical" fill>
-            <a-button type="primary" status="success" @click="openLessonCreate">新增课时</a-button>
+            <a-button v-has="'edu:course:manage'" type="primary" status="success" @click="openLessonCreate">新增课时</a-button>
             <a-table :columns="lessonColumns" :data="lessonList" :pagination="false" row-key="id">
               <template #chapter="{ record }">{{ chapterName(record.chapterId) }}</template>
               <template #duration="{ record }">{{ formatDuration(record.durationSeconds) }}</template>
@@ -122,8 +122,8 @@
               </template>
               <template #operations="{ record }">
                 <a-space>
-                  <a-button type="text" size="small" @click="openLessonEdit(record)">编辑</a-button>
-                  <a-button type="text" status="danger" size="small" @click="handleLessonDelete(record)">删除</a-button>
+                  <a-button v-has="'edu:course:manage'" type="text" size="small" @click="openLessonEdit(record)">编辑</a-button>
+                  <a-button v-has="'edu:course:manage'" type="text" status="danger" size="small" @click="handleLessonDelete(record)">删除</a-button>
                 </a-space>
               </template>
             </a-table>
@@ -131,16 +131,16 @@
         </a-tab-pane>
         <a-tab-pane key="assignments" title="作业">
           <a-space direction="vertical" fill>
-            <a-button type="primary" status="success" @click="openAssignmentCreate">新增作业</a-button>
+            <a-button v-has="'edu:course:manage'" type="primary" status="success" @click="openAssignmentCreate">新增作业</a-button>
             <a-table :columns="assignmentColumns" :data="assignmentList" :pagination="false" row-key="id">
               <template #status="{ record }">
                 <a-tag :color="record.status === 1 ? 'green' : 'gray'">{{ record.status === 1 ? '启用' : '停用' }}</a-tag>
               </template>
               <template #operations="{ record }">
                 <a-space>
-                  <a-button type="text" size="small" @click="openAssignmentEdit(record)">编辑</a-button>
-                  <a-button type="text" size="small" @click="openSubmissions(record)">提交</a-button>
-                  <a-button type="text" status="danger" size="small" @click="handleAssignmentDelete(record)">删除</a-button>
+                  <a-button v-has="'edu:course:manage'" type="text" size="small" @click="openAssignmentEdit(record)">编辑</a-button>
+                  <a-button v-has="'edu:course:manage'" type="text" size="small" @click="openSubmissions(record)">提交</a-button>
+                  <a-button v-has="'edu:course:manage'" type="text" status="danger" size="small" @click="handleAssignmentDelete(record)">删除</a-button>
                 </a-space>
               </template>
             </a-table>
@@ -148,7 +148,7 @@
         </a-tab-pane>
         <a-tab-pane key="records" title="学习记录">
           <a-space direction="vertical" fill>
-            <a-button type="primary" status="success" @click="openRecordCreate">新增学习记录</a-button>
+            <a-button v-has="'edu:course:manage'" type="primary" status="success" @click="openRecordCreate">新增学习记录</a-button>
             <a-table :columns="recordColumns" :data="recordList" :pagination="false" row-key="id">
               <template #lesson="{ record }">{{ lessonName(record.lessonId) }}</template>
               <template #progress="{ record }">{{ record.progress }}%</template>
@@ -157,8 +157,8 @@
               </template>
               <template #operations="{ record }">
                 <a-space>
-                  <a-button type="text" size="small" @click="openRecordEdit(record)">编辑</a-button>
-                  <a-button type="text" status="danger" size="small" @click="handleRecordDelete(record)">删除</a-button>
+                  <a-button v-has="'edu:course:manage'" type="text" size="small" @click="openRecordEdit(record)">编辑</a-button>
+                  <a-button v-has="'edu:course:manage'" type="text" status="danger" size="small" @click="handleRecordDelete(record)">删除</a-button>
                 </a-space>
               </template>
             </a-table>
@@ -249,17 +249,17 @@
 
     <a-modal v-model:visible="submissionVisible" :title="`${currentAssignment?.title || ''} 提交记录`" width="860px" :footer="false">
       <a-space direction="vertical" fill>
-        <a-button type="primary" status="success" @click="openSubmissionCreate">新增提交</a-button>
+        <a-button v-has="'edu:course:manage'" type="primary" status="success" @click="openSubmissionCreate">新增提交</a-button>
         <a-table :columns="submissionColumns" :data="submissionList" :pagination="false" row-key="id">
           <template #status="{ record }">
             <a-tag :color="submissionStatusColor[record.status]">{{ submissionStatusText[record.status] || record.status }}</a-tag>
           </template>
           <template #operations="{ record }">
             <a-space>
-              <a-button type="text" size="small" @click="openSubmissionEdit(record)">编辑</a-button>
-              <a-button v-if="record.fileId" type="text" size="small" @click="openSubmissionFile(record)">附件</a-button>
-              <a-button type="text" size="small" @click="quickGrade(record)">评分</a-button>
-              <a-button type="text" status="danger" size="small" @click="handleSubmissionDelete(record)">删除</a-button>
+              <a-button v-has="'edu:course:manage'" type="text" size="small" @click="openSubmissionEdit(record)">编辑</a-button>
+              <a-button v-if="record.fileId" v-has="'edu:course:manage'" type="text" size="small" @click="openSubmissionFile(record)">附件</a-button>
+              <a-button v-has="'edu:course:manage'" type="text" size="small" @click="quickGrade(record)">评分</a-button>
+              <a-button v-has="'edu:course:manage'" type="text" status="danger" size="small" @click="handleSubmissionDelete(record)">删除</a-button>
             </a-space>
           </template>
         </a-table>

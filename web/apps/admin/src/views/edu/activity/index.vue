@@ -13,9 +13,9 @@
         </a-form-item>
         <a-form-item>
           <a-space>
-            <a-button type="primary" @click="fetchData">查询</a-button>
+            <a-button v-has="'edu:activity:query'" type="primary" @click="fetchData">查询</a-button>
             <a-button @click="resetQuery">重置</a-button>
-            <a-button type="primary" status="success" @click="openCreate">新增活动</a-button>
+            <a-button v-has="'edu:activity:add'" type="primary" status="success" @click="openCreate">新增活动</a-button>
           </a-space>
         </a-form-item>
       </a-form>
@@ -28,9 +28,9 @@
         </template>
         <template #operations="{ record }">
           <a-space>
-            <a-button type="text" size="small" @click="openEdit(record)">编辑</a-button>
-            <a-button type="text" size="small" @click="openManage(record)">业务管理</a-button>
-            <a-button type="text" status="danger" size="small" @click="handleDelete(record)">删除</a-button>
+            <a-button v-has="'edu:activity:edit'" type="text" size="small" @click="openEdit(record)">编辑</a-button>
+            <a-button v-has="'edu:activity:manage'" type="text" size="small" @click="openManage(record)">业务管理</a-button>
+            <a-button v-has="'edu:activity:remove'" type="text" status="danger" size="small" @click="handleDelete(record)">删除</a-button>
           </a-space>
         </template>
       </a-table>
@@ -84,12 +84,12 @@
       <a-tabs default-active-key="signups">
         <a-tab-pane key="signups" title="报名">
           <a-space direction="vertical" fill>
-            <a-button type="primary" status="success" @click="openSignupCreate">新增报名</a-button>
+            <a-button v-has="'edu:activity:manage'" type="primary" status="success" @click="openSignupCreate">新增报名</a-button>
             <a-table :columns="signupColumns" :data="signupList" :pagination="false" row-key="id">
               <template #operations="{ record }">
                 <a-space>
-                  <a-button type="text" size="small" @click="openSignupEdit(record)">编辑</a-button>
-                  <a-button type="text" status="danger" size="small" @click="handleSignupDelete(record)">删除</a-button>
+                  <a-button v-has="'edu:activity:manage'" type="text" size="small" @click="openSignupEdit(record)">编辑</a-button>
+                  <a-button v-has="'edu:activity:manage'" type="text" status="danger" size="small" @click="handleSignupDelete(record)">删除</a-button>
                 </a-space>
               </template>
             </a-table>
@@ -97,25 +97,25 @@
         </a-tab-pane>
         <a-tab-pane key="checkins" title="签到">
           <a-space direction="vertical" fill>
-            <a-button type="primary" status="success" @click="openCheckinCreate">新增签到</a-button>
+            <a-button v-has="'edu:activity:manage'" type="primary" status="success" @click="openCheckinCreate">新增签到</a-button>
             <a-table :columns="checkinColumns" :data="checkinList" :pagination="false" row-key="id">
               <template #operations="{ record }">
-                <a-button type="text" status="danger" size="small" @click="handleCheckinDelete(record)">删除</a-button>
+                <a-button v-has="'edu:activity:manage'" type="text" status="danger" size="small" @click="handleCheckinDelete(record)">删除</a-button>
               </template>
             </a-table>
           </a-space>
         </a-tab-pane>
         <a-tab-pane key="outcomes" title="成果">
           <a-space direction="vertical" fill>
-            <a-button type="primary" status="success" @click="openOutcomeCreate">新增成果</a-button>
+            <a-button v-has="'edu:activity:manage'" type="primary" status="success" @click="openOutcomeCreate">新增成果</a-button>
             <a-table :columns="outcomeColumns" :data="outcomeList" :pagination="false" row-key="id">
               <template #status="{ record }">
                 <a-tag :color="record.status === 1 ? 'green' : 'gray'">{{ record.status === 1 ? '启用' : '停用' }}</a-tag>
               </template>
               <template #operations="{ record }">
                 <a-space>
-                  <a-button type="text" size="small" @click="openOutcomeEdit(record)">编辑</a-button>
-                  <a-button type="text" status="danger" size="small" @click="handleOutcomeDelete(record)">删除</a-button>
+                  <a-button v-has="'edu:activity:manage'" type="text" size="small" @click="openOutcomeEdit(record)">编辑</a-button>
+                  <a-button v-has="'edu:activity:manage'" type="text" status="danger" size="small" @click="handleOutcomeDelete(record)">删除</a-button>
                 </a-space>
               </template>
             </a-table>
