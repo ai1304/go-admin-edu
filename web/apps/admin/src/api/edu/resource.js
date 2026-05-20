@@ -98,7 +98,7 @@ export function addResourceFile(data) {
 }
 
 export function uploadResourceFile(data) {
-  return request({ url: `${fileUrl}/upload`, method: 'post', data });
+  return request({ url: `${fileUrl}/upload`, method: 'post', data, timeout: 600000 });
 }
 
 export function removeResourceFiles(data) {

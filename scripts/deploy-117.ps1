@@ -119,6 +119,7 @@ sshpass -p "$SSH_PASS" ssh $SSH_OPTS "$REMOTE_USER@$REMOTE_HOST" "mkdir -p '$REM
 echo "[remote] upload artifacts and runtime files"
 sshpass -p "$SSH_PASS" scp $SSH_OPTS deploy-artifacts.tgz "$REMOTE_USER@$REMOTE_HOST:$REMOTE_DIR/deploy-artifacts.tgz"
 sshpass -p "$SSH_PASS" scp $SSH_OPTS deploy/docker-compose.runtime.yml "$REMOTE_USER@$REMOTE_HOST:$REMOTE_DIR/deploy/docker-compose.runtime.yml"
+sshpass -p "$SSH_PASS" scp $SSH_OPTS go-admin/config/settings.docker.yml "$REMOTE_USER@$REMOTE_HOST:$REMOTE_DIR/go-admin/config/settings.docker.yml"
 sshpass -p "$SSH_PASS" scp $SSH_OPTS web/apps/admin/nginx.conf "$REMOTE_USER@$REMOTE_HOST:$REMOTE_DIR/web/apps/admin/nginx.conf"
 sshpass -p "$SSH_PASS" scp $SSH_OPTS web/apps/portal/nginx.conf "$REMOTE_USER@$REMOTE_HOST:$REMOTE_DIR/web/apps/portal/nginx.conf"
 
@@ -213,6 +214,9 @@ Invoke-Step "Upload, migrate, restart, and check 117 server" {
     -v "${Root}:/workspace" `
     -v "${RemoteScript}:/remote_deploy.sh" `
     alpine:3.20 sh /remote_deploy.sh
+  if ($LASTEXITCODE -ne 0) {
+    throw "Remote deploy failed with exit code $LASTEXITCODE."
+  }
 }
 
 Write-Host ""

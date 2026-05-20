@@ -4,8 +4,8 @@ settings:
     host: 0.0.0.0
     name: go-admin-edu
     port: 8000
-    readtimeout: 10
-    writertimeout: 10
+    readtimeout: 600
+    writertimeout: 600
     enabledp: true
   logger:
     path: temp/logs
