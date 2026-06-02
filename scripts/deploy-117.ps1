@@ -1,5 +1,5 @@
 param(
-  [string]$HostName = "117.72.200.80",
+  [string]$HostName = "114.55.176.121",
   [string]$RemoteUser = "root",
   [string]$RemoteDir = "/opt/go-admin-edu",
   [string]$PasswordEnv = "GO_ADMIN_EDU_SSH_PASS",
