@@ -64,10 +64,9 @@
 
     <a-spin :loading="loading" style="width: 100%">
       <div v-if="resources.length" class="resource-grid">
-        <router-link v-for="item in resources" :key="item.id" :to="`/resources/${item.id}`" class="resource-card">
-          <div class="cover" :class="{ empty: !item.coverUrl }">
-            <img v-if="item.coverUrl" :src="item.coverUrl" :alt="item.title" />
-            <span v-else>{{ categoryName(item.resourceTypeId, 'resource_type') || '资源' }}</span>
+        <router-link v-for="(item, index) in resources" :key="item.id" :to="`/resources/${item.id}`" class="resource-card">
+          <div class="cover">
+            <img :src="cardCover(item, 'resource', index)" :alt="item.title" />
           </div>
           <div class="resource-body">
             <strong>{{ item.title }}</strong>
@@ -96,6 +95,7 @@ import { onMounted, reactive, ref } from "vue";
 import { useRoute } from "vue-router";
 import PortalLayout from "@/layouts/PortalLayout.vue";
 import { getResourceCategories, getResourceTags, searchPublishedResources } from "@/api/resources";
+import { cardCover } from "@/utils/defaultCovers";
 
 const loading = ref(false);
 const route = useRoute();
@@ -244,13 +244,17 @@ onMounted(async () => {
   overflow: hidden;
   display: grid;
   grid-template-rows: 150px minmax(0, 1fr);
-  min-height: 340px;
+  height: 340px;
   background: #fff;
   border: 1px solid #e5e6eb;
   border-radius: 8px;
 }
 
 .cover {
+  position: relative;
+  min-height: 0;
+  height: 150px;
+  overflow: hidden;
   display: grid;
   place-items: center;
   background: #e8f3ff;
@@ -259,16 +263,17 @@ onMounted(async () => {
 }
 
 .cover img {
+  display: block;
   width: 100%;
   height: 100%;
+  max-width: 100%;
+  max-height: 100%;
   object-fit: cover;
 }
 
-.cover.empty span {
-  padding: 0 18px;
-}
-
 .resource-body {
+  min-height: 0;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -276,12 +281,21 @@ onMounted(async () => {
 }
 
 .resource-body strong {
+  display: -webkit-box;
+  overflow: hidden;
   font-size: 17px;
+  line-height: 1.45;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
 }
 
 .resource-body span {
+  display: -webkit-box;
+  overflow: hidden;
   color: #4e5969;
   line-height: 1.7;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
 }
 
 .resource-tags {

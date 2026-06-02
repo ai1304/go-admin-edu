@@ -32,12 +32,21 @@
                 <div v-else class="preview-loading">正在获取 PDF 地址...</div>
               </div>
 
+              <div v-else-if="activeFile && activeKind === 'image'" class="image-stage">
+                <img v-if="activeUrl" :src="activeUrl" :alt="activeFile.originalName" />
+                <div v-else class="preview-loading">正在获取图片地址...</div>
+              </div>
+
+              <div v-else-if="activeFile && activeKind === 'document'" class="pdf-stage">
+                <iframe v-if="activeUrl" :src="activeUrl" :title="activeFile.originalName"></iframe>
+                <div v-else class="preview-loading">正在获取文档地址...</div>
+              </div>
+
               <div v-else class="empty-stage">
                 <div class="empty-mark">{{ previewTypeLabel(activeFile) }}</div>
                 <h2>{{ activeFile ? activeFile.originalName : "暂无可预览文件" }}</h2>
                 <p>{{ previewHint }}</p>
                 <a-space v-if="activeFile">
-                  <a-button type="primary" @click="downloadFile(activeFile)">下载文件</a-button>
                   <a-button @click="openFile(activeFile)">新窗口打开</a-button>
                 </a-space>
               </div>
@@ -48,7 +57,6 @@
                 <a-button :type="favorited ? 'outline' : 'primary'" @click="toggleFavorite">
                   {{ favorited ? "取消收藏" : "收藏资源" }}
                 </a-button>
-                <a-button v-if="activeFile" @click="downloadFile(activeFile)">下载当前文件</a-button>
                 <a-button v-if="activeFile" @click="openFile(activeFile)">新窗口预览</a-button>
               </a-space>
             </section>
@@ -78,7 +86,7 @@
                   <span class="file-badge" :class="fileKind(file)">{{ fileTypeText(file) }}</span>
                   <span class="attachment-name">{{ file.originalName }}</span>
                   <small>{{ formatSize(file.size) }}</small>
-                  <a-button size="mini" @click.stop="downloadFile(file)">下载</a-button>
+                  <a-button size="mini" @click.stop="openFile(file)">预览</a-button>
                 </button>
               </div>
               <a-empty v-else description="暂无附件" />
@@ -206,16 +214,16 @@ const commentForm = reactive({ nickname: "", content: "", parentId: 0 });
 
 const videoExts = new Set(["mp4", "webm", "ogg", "mov", "m4v"]);
 const pdfExts = new Set(["pdf"]);
+const imageExts = new Set(["jpg", "jpeg", "png", "gif", "webp", "bmp", "svg", "avif"]);
 const docExts = new Set(["ppt", "pptx", "doc", "docx", "xls", "xlsx"]);
 
 const activeKind = computed(() => fileKind(activeFile.value));
-const previewableFiles = computed(() => files.value.filter((file) => ["video", "pdf"].includes(fileKind(file))));
+const previewableFiles = computed(() => files.value.filter((file) => ["video", "pdf", "image", "document"].includes(fileKind(file))));
 const downloadableFiles = computed(() => files.value.filter((file) => file.usage !== "cover"));
 const keywordList = computed(() => (resource.value?.keywords || "").split(/[,，\s]+/).filter(Boolean));
 const previewHint = computed(() => {
   if (!activeFile.value) return "后台上传视频或 PDF 后，可在这里直接在线播放或在线预览。";
-  if (activeKind.value === "document") return "PPT、Word、Excel 类型暂不做浏览器内嵌预览，请下载后查看。";
-  return "当前文件暂不支持在线预览，请下载后查看。";
+  return "当前文件暂不支持在线预览，请在新窗口查看。";
 });
 
 const commentTree = computed(() => {
@@ -288,6 +296,7 @@ function fileKind(file) {
   const contentType = (file.contentType || "").toLowerCase();
   if (contentType.startsWith("video/") || videoExts.has(ext)) return "video";
   if (contentType.includes("pdf") || pdfExts.has(ext)) return "pdf";
+  if (contentType.startsWith("image/") || imageExts.has(ext)) return "image";
   if (docExts.has(ext)) return "document";
   return "other";
 }
@@ -296,6 +305,7 @@ function fileTypeText(file) {
   const kind = fileKind(file);
   if (kind === "video") return "视频";
   if (kind === "pdf") return "PDF";
+  if (kind === "image") return "图片";
   if (kind === "document") return (normalizedExt(file) || "文档").toUpperCase();
   return (normalizedExt(file) || "附件").toUpperCase();
 }
@@ -326,7 +336,7 @@ async function getFileUrl(file, purpose = "preview") {
 async function selectFile(file) {
   activeFile.value = file;
   activeUrl.value = "";
-  if (!["video", "pdf"].includes(fileKind(file))) return;
+  if (!["video", "pdf", "image", "document"].includes(fileKind(file))) return;
   try {
     activeUrl.value = await getFileUrl(file, "preview");
   } catch (error) {
@@ -442,6 +452,7 @@ onMounted(fetchResource);
 
 .video-stage,
 .pdf-stage,
+.image-stage,
 .empty-stage {
   width: 100%;
   min-height: 560px;
@@ -466,6 +477,25 @@ onMounted(fetchResource);
   height: 720px;
   border: 0;
   background: #fff;
+}
+
+.image-stage {
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background:
+    linear-gradient(180deg, rgba(7, 11, 24, 0.72), rgba(7, 11, 24, 0.96)),
+    radial-gradient(circle at 50% 35%, rgba(49, 120, 255, 0.2), transparent 38%);
+}
+
+.image-stage img {
+  display: block;
+  max-width: 100%;
+  max-height: 680px;
+  object-fit: contain;
+  background: #fff;
+  border-radius: 6px;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.28);
 }
 
 .empty-stage,
@@ -579,6 +609,10 @@ onMounted(fetchResource);
 
 .file-badge.pdf {
   background: #ff7d00;
+}
+
+.file-badge.image {
+  background: #14c9c9;
 }
 
 .file-badge.document {
@@ -742,8 +776,13 @@ onMounted(fetchResource);
   .preview-shell,
   .video-stage,
   .pdf-stage,
+  .image-stage,
   .empty-stage {
     min-height: 360px;
+  }
+
+  .image-stage img {
+    max-height: 420px;
   }
 
   .pdf-stage iframe {

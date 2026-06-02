@@ -29,9 +29,9 @@
 
     <a-spin :loading="loading" style="width: 100%">
       <div v-if="courses.length" class="course-grid">
-        <router-link v-for="item in courses" :key="item.id" :to="`/courses/${item.id}`" class="course-card">
+        <router-link v-for="(item, index) in courses" :key="item.id" :to="`/courses/${item.id}`" class="course-card">
           <div class="course-cover">
-            <span>{{ difficultyText[item.difficulty] || item.difficulty || "专题课程" }}</span>
+            <img :src="cardCover(item, 'course', index)" :alt="item.title" />
           </div>
           <div class="course-body">
             <strong>{{ item.title }}</strong>
@@ -60,6 +60,7 @@ import { useRoute } from "vue-router";
 import PortalLayout from "@/layouts/PortalLayout.vue";
 import { getPublishedCourses } from "@/api/courses";
 import { getResourceCategories } from "@/api/resources";
+import { cardCover } from "@/utils/defaultCovers";
 
 const route = useRoute();
 const loading = ref(false);
@@ -200,12 +201,19 @@ onMounted(async () => {
   border-radius: 8px;
 }
 .course-cover {
+  overflow: hidden;
   display: grid;
   place-items: center;
   height: 150px;
   color: #0b5ed7;
   font-weight: 800;
   background: linear-gradient(135deg, #e8f3ff, #eefbf7);
+}
+.course-cover img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 .course-body {
   display: flex;

@@ -11,11 +11,11 @@ export default defineConfig({
   plugins: [
     vue(),
     viteMockServe({
-      mockPath: '/mock',
+      mockPath: 'mock',
     }),
     svgLoader(),
     viteMockServe({
-      mockPath: '/mock',
+      mockPath: 'mock',
     }),
     Components({
       resolvers: [VuetifyResolver()],
@@ -30,6 +30,16 @@ export default defineConfig({
   server: {
     host: true,
     port: 1798,
+    watch: {
+      ignored: [
+        '**/node_modules/**',
+        '**/dist/**',
+        '**/.git/**',
+        '**/System Volume Information/**',
+        'D:/System Volume Information/**',
+        'D:\\System Volume Information\\**',
+      ],
+    },
     proxy: {
       '/api/v1': {
         target: 'http://127.0.0.1:8000',
@@ -40,9 +50,9 @@ export default defineConfig({
   css: {
     preprocessorOptions: {
       scss: {
-        additionalData: `@import "@/style/variables.scss";`
+        additionalData: `@use "@/style/variables.scss" as *;`
       }
     }
   },
-  publicDir: '/public'
+  publicDir: 'public'
 });

@@ -13,7 +13,8 @@
         </div>
         <img v-if="news.coverUrl" class="cover" :src="news.coverUrl" :alt="news.title" />
         <p class="summary">{{ news.summary }}</p>
-        <div class="content">{{ news.content || "暂无正文内容。" }}</div>
+        <div v-if="news.content" class="content" v-html="news.content"></div>
+        <div v-else class="content">暂无正文内容。</div>
         <a-button type="primary" @click="handleLike">点赞</a-button>
       </article>
       <a-empty v-else description="资讯不存在或已下线" />
@@ -107,6 +108,12 @@ onMounted(fetchDetail);
   color: #1d2129;
   font-size: 16px;
   line-height: 2;
-  white-space: pre-wrap;
+  white-space: normal;
+}
+
+.content :deep(p),
+.content :deep(ul),
+.content :deep(ol) {
+  margin: 0 0 14px;
 }
 </style>

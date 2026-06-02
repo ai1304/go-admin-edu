@@ -128,7 +128,8 @@ sshpass -p "$SSH_PASS" ssh $SSH_OPTS "$REMOTE_USER@$REMOTE_HOST" "
 set -eu
 cd '$REMOTE_DIR'
 mkdir -p deploy web/apps/admin web/apps/portal go-admin/config
-sed -i 's#publicEndpoint: http://localhost:9000#publicEndpoint: http://117.72.200.80:9000#' go-admin/config/settings.docker.yml || true
+sed -i "s#publicEndpoint: http://localhost:9000#publicEndpoint: http://${REMOTE_HOST}:9000#" go-admin/config/settings.docker.yml || true
+sed -i "s#publicEndpoint: http://[0-9.]*:9000#publicEndpoint: http://${REMOTE_HOST}:9000#" go-admin/config/settings.docker.yml || true
 rm -rf deploy/artifacts
 tar -xzf deploy-artifacts.tgz -C deploy
 chmod +x deploy/artifacts/api/go-admin

@@ -37,6 +37,21 @@ const routes = [
     component: () => import("@/views/ActivityDetailView.vue")
   },
   {
+    path: "/recruit",
+    name: "recruit",
+    component: () => import("@/views/RecruitServiceView.vue")
+  },
+  {
+    path: "/recruit/jobs/:id",
+    name: "recruit-job-detail",
+    component: () => import("@/views/RecruitJobDetailView.vue")
+  },
+  {
+    path: "/recruit/companies/:id",
+    name: "recruit-company-detail",
+    component: () => import("@/views/RecruitCompanyDetailView.vue")
+  },
+  {
     path: "/cases",
     name: "cases",
     component: () => import("@/views/CaseListView.vue")

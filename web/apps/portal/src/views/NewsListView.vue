@@ -18,9 +18,6 @@
     <a-spin :loading="loading" style="width: 100%">
       <div v-if="list.length" class="news-page-list">
         <router-link v-for="item in list" :key="item.id" :to="`/news/${item.id}`" class="news-page-item">
-          <div v-if="item.coverUrl" class="news-cover">
-            <img :src="item.coverUrl" :alt="item.title" />
-          </div>
           <div class="news-body">
             <a-tag color="arcoblue">{{ moduleText[item.moduleType] || item.moduleType }}</a-tag>
             <h2>{{ item.title }}</h2>
@@ -31,6 +28,10 @@
               <span>{{ item.viewCount || 0 }} 浏览</span>
               <span>{{ item.likeCount || 0 }} 点赞</span>
             </footer>
+          </div>
+          <div class="news-cover">
+            <img v-if="item.coverUrl" :src="item.coverUrl" :alt="item.title" />
+            <span v-else>资讯封面</span>
           </div>
         </router-link>
       </div>
@@ -117,7 +118,7 @@ onMounted(fetchNews);
 
 .news-page-item {
   display: grid;
-  grid-template-columns: 210px minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) 210px;
   gap: 18px;
   padding: 16px;
   background: #fff;
@@ -130,6 +131,10 @@ onMounted(fetchNews);
   overflow: hidden;
   border-radius: 8px;
   background: #edf4ff;
+  display: grid;
+  place-items: center;
+  color: #165dff;
+  font-weight: 700;
 }
 
 .news-cover img {

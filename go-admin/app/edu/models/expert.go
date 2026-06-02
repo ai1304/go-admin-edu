@@ -24,6 +24,7 @@ type EduExpertResource struct {
 	BaseModel
 	ExpertId   int    `json:"expertId" gorm:"index;comment:专家ID"`
 	Title      string `json:"title" gorm:"size:255;not null;comment:资源标题"`
+	Summary    string `json:"summary" gorm:"size:1024;comment:资源简介"`
 	Type       string `json:"type" gorm:"size:32;index;comment:资源类型"`
 	ResourceId int    `json:"resourceId" gorm:"index;comment:关联资源ID"`
 	CourseId   int    `json:"courseId" gorm:"index;comment:关联课程ID"`

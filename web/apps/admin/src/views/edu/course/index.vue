@@ -4,7 +4,7 @@
       <template #title>课程管理</template>
       <a-form :model="queryForm" layout="inline">
         <a-form-item label="关键词">
-          <a-input v-model="queryForm.keyword" allow-clear placeholder="课程标题、教师" />
+          <a-input v-model="queryForm.keyword" allow-clear placeholder="课程标题、课程简介" />
         </a-form-item>
         <a-form-item label="状态">
           <a-select v-model="queryForm.status" allow-clear placeholder="请选择状态" style="width: 160px">
@@ -26,6 +26,9 @@
         <template #status="{ record }">
           <a-tag :color="statusColor[record.status]">{{ statusText[record.status] || record.status }}</a-tag>
         </template>
+        <template #difficulty="{ record }">
+          {{ difficultyText[record.difficulty] || record.difficulty || '-' }}
+        </template>
         <template #operations="{ record }">
           <a-space>
             <a-button v-has="'edu:course:edit'" type="text" size="small" @click="openEdit(record)">编辑</a-button>
@@ -45,14 +48,9 @@
             </a-form-item>
           </a-col>
           <a-col :span="12">
-            <a-form-item field="teacherName" label="授课教师">
-              <a-input v-model="formModel.teacherName" placeholder="请输入授课教师" />
-            </a-form-item>
-          </a-col>
-          <a-col :span="12">
-            <a-form-item field="difficulty" label="难度">
+            <a-form-item field="difficulty" label="课程难度">
               <a-select v-model="formModel.difficulty" allow-clear placeholder="请选择难度">
-                <a-option value="basic">基础</a-option>
+                <a-option value="basic">入门</a-option>
                 <a-option value="advanced">进阶</a-option>
                 <a-option value="expert">专家</a-option>
               </a-select>
@@ -70,33 +68,9 @@
               </a-select>
             </a-form-item>
           </a-col>
-          <a-col :span="12">
-            <a-form-item field="sort" label="门户排序">
-              <a-input-number v-model="formModel.sort" :min="0" style="width: 100%" />
-            </a-form-item>
-          </a-col>
-          <a-col :span="12">
-            <a-form-item field="stageCategoryId" label="学段">
-              <a-select v-model="formModel.stageCategoryId" allow-clear placeholder="请选择学段">
-                <a-option v-for="item in getCategoryOptions('stage')" :key="item.id" :value="item.id">{{ item.name }}</a-option>
-              </a-select>
-            </a-form-item>
-          </a-col>
-          <a-col :span="12">
-            <a-form-item field="disabilityTypeId" label="障碍类型">
-              <a-select v-model="formModel.disabilityTypeId" allow-clear placeholder="请选择障碍类型">
-                <a-option v-for="item in getCategoryOptions('disability')" :key="item.id" :value="item.id">{{ item.name }}</a-option>
-              </a-select>
-            </a-form-item>
-          </a-col>
           <a-col :span="24">
             <a-form-item field="summary" label="课程简介">
               <a-textarea v-model="formModel.summary" :auto-size="{ minRows: 3, maxRows: 5 }" placeholder="请输入课程简介" />
-            </a-form-item>
-          </a-col>
-          <a-col :span="24">
-            <a-form-item field="objectives" label="教学目标">
-              <a-textarea v-model="formModel.objectives" :auto-size="{ minRows: 3, maxRows: 5 }" placeholder="请输入教学目标" />
             </a-form-item>
           </a-col>
         </a-row>
@@ -139,7 +113,24 @@
             </a-table>
           </a-space>
         </a-tab-pane>
-        <a-tab-pane key="assignments" title="作业">
+        <a-tab-pane key="resources" title="资源">
+          <a-table :columns="resourceColumns" :data="lessonList" :pagination="false" row-key="id">
+            <template #chapter="{ record }">{{ chapterName(record.chapterId) }}</template>
+            <template #videoFileId="{ record }">
+              <a-tag v-if="record.videoFileId" color="blue">文件 ID：{{ record.videoFileId }}</a-tag>
+              <span v-else>-</span>
+            </template>
+            <template #operations="{ record }">
+              <a-space>
+                <a-button v-has="'edu:course:manage'" type="text" size="small" :loading="resourceUploading && uploadLesson?.id === record.id" @click="triggerResourceUpload(record)">
+                  {{ record.videoFileId ? '重新上传' : '上传视频' }}
+                </a-button>
+              </a-space>
+            </template>
+          </a-table>
+          <input ref="resourceFileInput" type="file" accept="video/*,.mp4,.webm,.mov,.m4v" class="hidden-file-input" @change="handleResourceFileChange" />
+        </a-tab-pane>
+        <a-tab-pane v-if="false" key="assignments" title="作业">
           <a-space direction="vertical" fill>
             <a-button v-has="'edu:course:manage'" type="primary" status="success" @click="openAssignmentCreate">新增作业</a-button>
             <a-table :columns="assignmentColumns" :data="assignmentList" :pagination="false" row-key="id">
@@ -156,7 +147,7 @@
             </a-table>
           </a-space>
         </a-tab-pane>
-        <a-tab-pane key="records" title="学习记录">
+        <a-tab-pane v-if="false" key="records" title="学习记录">
           <a-space direction="vertical" fill>
             <a-button v-has="'edu:course:manage'" type="primary" status="success" @click="openRecordCreate">新增学习记录</a-button>
             <a-table :columns="recordColumns" :data="recordList" :pagination="false" row-key="id">
@@ -218,17 +209,12 @@
               <a-input-number v-model="lessonModel.durationSeconds" :min="0" style="width: 100%" />
             </a-form-item>
           </a-col>
-          <a-col :span="8">
-            <a-form-item field="videoFileId" label="视频文件 ID">
-              <a-input-number v-model="lessonModel.videoFileId" :min="0" style="width: 100%" />
-            </a-form-item>
-          </a-col>
-          <a-col :span="8">
+          <a-col :span="12">
             <a-form-item field="sort" label="排序">
               <a-input-number v-model="lessonModel.sort" :min="0" style="width: 100%" />
             </a-form-item>
           </a-col>
-          <a-col :span="8">
+          <a-col :span="12">
             <a-form-item field="status" label="状态">
               <a-select v-model="lessonModel.status">
                 <a-option :value="1">启用</a-option>
@@ -374,7 +360,7 @@ import {
   updateCourseLearningRecord,
   updateCourseLesson
 } from '@/api/edu/course';
-import { getResourceCategories } from '@/api/edu/resource';
+import { getResourceCategories, uploadResourceFile } from '@/api/edu/resource';
 
 const statusOptions = [
   { label: '草稿', value: 'draft' },
@@ -392,6 +378,7 @@ const submissionStatusOptions = [
 ];
 const statusText = Object.fromEntries(statusOptions.map((item) => [item.value, item.label]));
 const statusColor = { draft: 'gray', published: 'green', offline: 'gray' };
+const difficultyText = { basic: '入门', advanced: '进阶', expert: '专家' };
 const recordStatusText = Object.fromEntries(recordStatusOptions.map((item) => [item.value, item.label]));
 const recordStatusColor = { learning: 'orange', finished: 'green' };
 const submissionStatusText = Object.fromEntries(submissionStatusOptions.map((item) => [item.value, item.label]));
@@ -421,14 +408,16 @@ const lessonModel = reactive(defaultLessonForm());
 const assignmentModel = reactive(defaultAssignmentForm());
 const submissionModel = reactive(defaultSubmissionForm());
 const recordModel = reactive(defaultRecordForm());
+const resourceFileInput = ref(null);
+const resourceUploading = ref(false);
+const uploadLesson = ref(null);
 
 const columns = [
   { title: '课程标题', dataIndex: 'title', ellipsis: true, tooltip: true },
-  { title: '教师', dataIndex: 'teacherName', width: 120 },
-  { title: '分类', dataIndex: 'category', width: 120 },
-  { title: '难度', dataIndex: 'difficulty', width: 100 },
+  { title: '课程简介', dataIndex: 'summary', ellipsis: true, tooltip: true },
+  { title: '课程分类', dataIndex: 'category', width: 140 },
+  { title: '课程难度', slotName: 'difficulty', width: 110 },
   { title: '状态', slotName: 'status', width: 110 },
-  { title: '学习人数', dataIndex: 'learnerCount', width: 110 },
   { title: '操作', slotName: 'operations', width: 220 }
 ];
 const chapterColumns = [
@@ -445,6 +434,12 @@ const lessonColumns = [
   { title: '排序', dataIndex: 'sort', width: 90 },
   { title: '状态', slotName: 'status', width: 100 },
   { title: '操作', slotName: 'operations', width: 150 }
+];
+const resourceColumns = [
+  { title: '课时标题', dataIndex: 'title', ellipsis: true, tooltip: true },
+  { title: '所属章节', slotName: 'chapter', width: 180 },
+  { title: '视频资源', slotName: 'videoFileId', width: 160 },
+  { title: '操作', slotName: 'operations', width: 140 }
 ];
 const assignmentColumns = [
   { title: '作业标题', dataIndex: 'title', ellipsis: true, tooltip: true },
@@ -493,6 +488,41 @@ function defaultChapterForm() {
 
 function defaultLessonForm() {
   return { id: undefined, chapterId: undefined, title: '', videoFileId: 0, durationSeconds: 0, sort: 0, status: 1 };
+}
+
+function triggerResourceUpload(lesson) {
+  uploadLesson.value = lesson;
+  resourceFileInput.value?.click();
+}
+
+async function handleResourceFileChange(event) {
+  const file = event.target.files?.[0];
+  if (!file || !uploadLesson.value?.id) return;
+  const extension = file.name.split('.').pop()?.toLowerCase();
+  if (!file.type.startsWith('video/') && !['mp4', 'webm', 'mov', 'm4v'].includes(extension)) {
+    Message.warning('请上传视频格式资源');
+    event.target.value = '';
+    return;
+  }
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('usage', 'course_video');
+  resourceUploading.value = true;
+  try {
+    const res = await uploadResourceFile(formData);
+    const fileId = (res.data || {}).id || 0;
+    if (!fileId) {
+      Message.warning('视频文件上传失败');
+      return;
+    }
+    await updateCourseLesson(currentCourse.value.id, uploadLesson.value.id, { ...uploadLesson.value, videoFileId: fileId });
+    await fetchStructure();
+    Message.success('视频上传成功');
+  } finally {
+    resourceUploading.value = false;
+    uploadLesson.value = null;
+    event.target.value = '';
+  }
 }
 
 function defaultAssignmentForm() {
@@ -855,5 +885,9 @@ onMounted(() => {
 <style scoped>
 .table-card {
   margin-top: 16px;
+}
+
+.hidden-file-input {
+  display: none;
 }
 </style>

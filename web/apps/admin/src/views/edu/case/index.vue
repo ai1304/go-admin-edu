@@ -32,6 +32,15 @@
         <template #operations="{ record }">
           <a-space>
             <a-button v-has="'edu:case:edit'" type="text" size="small" @click="openEdit(record)">编辑</a-button>
+            <a-button
+              v-has="'edu:case:edit'"
+              type="text"
+              size="small"
+              :status="record.status === 'published' ? 'warning' : 'success'"
+              @click="handleShelfStatus(record)"
+            >
+              {{ record.status === 'published' ? '下架' : '上架' }}
+            </a-button>
             <a-button v-has="'edu:case:manage'" type="text" size="small" @click="openManage(record)">业务管理</a-button>
             <a-button v-has="'edu:case:remove'" type="text" status="danger" size="small" @click="handleDelete(record)">删除</a-button>
           </a-space>
@@ -96,13 +105,13 @@
             </a-form-item>
           </a-col>
           <a-col :span="12">
-            <a-form-item field="coverUrl" label="封面地址">
-              <a-input v-model="formModel.coverUrl" placeholder="可填写外部图片 URL" />
-            </a-form-item>
-          </a-col>
-          <a-col :span="12">
-            <a-form-item field="sort" label="门户排序">
-              <a-input-number v-model="formModel.sort" :min="0" style="width: 100%" />
+            <a-form-item field="coverFileId" label="封面图片">
+              <a-space direction="vertical" fill class="upload-field">
+                <img v-if="formModel.coverUrl" :src="formModel.coverUrl" alt="案例封面" class="upload-image-preview" />
+                <a-tag v-if="formModel.coverFileId" color="green">已上传封面图片</a-tag>
+                <a-button :loading="coverUploading" @click="triggerCoverUpload">上传 png/jpg</a-button>
+                <input ref="coverFileInput" type="file" accept=".png,.jpg,.jpeg,image/png,image/jpeg" class="hidden-file-input" @change="handleCoverFileChange" />
+              </a-space>
             </a-form-item>
           </a-col>
           <a-col :span="12">
@@ -471,10 +480,8 @@ import {
 import { uploadResourceFile } from '@/api/edu/resource';
 
 const statusOptions = [
-  { label: '草稿', value: 'draft' },
-  { label: '审核中', value: 'reviewing' },
-  { label: '已驳回', value: 'rejected' },
-  { label: '已归档', value: 'archived' }
+  { label: '已上架', value: 'published' },
+  { label: '已下架', value: 'offline' }
 ];
 const subStatusOptions = [
   { label: '草稿', value: 'draft' },
@@ -487,7 +494,7 @@ const interventionStatusOptions = [
   { label: '已完成', value: 'finished' }
 ];
 const statusText = Object.fromEntries(statusOptions.map((item) => [item.value, item.label]));
-const statusColor = { draft: 'gray', reviewing: 'orange', rejected: 'red', archived: 'blue' };
+const statusColor = { published: 'green', offline: 'gray' };
 const subStatusText = Object.fromEntries(subStatusOptions.map((item) => [item.value, item.label]));
 const subStatusColor = { draft: 'gray', active: 'green', finished: 'blue' };
 const interventionStatusText = Object.fromEntries(interventionStatusOptions.map((item) => [item.value, item.label]));
@@ -513,6 +520,8 @@ const authorizationModel = reactive(defaultAuthorizationForm());
 const attachmentModel = reactive(defaultAttachmentForm());
 const reviewModel = reactive(defaultReviewForm());
 const attachmentFileInput = ref(null);
+const coverFileInput = ref(null);
+const coverUploading = ref(false);
 const iepList = ref([]);
 const assessmentList = ref([]);
 const interventionList = ref([]);
@@ -646,10 +655,10 @@ function defaultForm() {
     abilityDomain: '',
     caseType: '',
     school: '',
+    coverFileId: 0,
     coverUrl: '',
     summary: '',
-    status: 'draft',
-    sort: 0
+    status: 'offline'
   };
 }
 
@@ -713,6 +722,34 @@ function openEdit(record) {
   formVisible.value = true;
 }
 
+function triggerCoverUpload() {
+  coverFileInput.value?.click();
+}
+
+async function handleCoverFileChange(event) {
+  const file = event.target.files?.[0];
+  if (!file) return;
+  const extension = file.name.split('.').pop()?.toLowerCase();
+  if (!['png', 'jpg', 'jpeg'].includes(extension)) {
+    Message.warning('封面图片仅支持 png、jpg');
+    event.target.value = '';
+    return;
+  }
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('usage', 'case_cover');
+  coverUploading.value = true;
+  try {
+    const res = await uploadResourceFile(formData);
+    formModel.coverFileId = (res.data || {}).id || 0;
+    formModel.coverUrl = '';
+    Message.success('封面上传成功');
+  } finally {
+    coverUploading.value = false;
+    event.target.value = '';
+  }
+}
+
 async function handleSave() {
   if (!formModel.title) {
     Message.warning('请输入案例名称');
@@ -739,6 +776,13 @@ function handleDelete(record) {
       fetchData();
     }
   });
+}
+
+async function handleShelfStatus(record) {
+  const status = record.status === 'published' ? 'offline' : 'published';
+  await updateCase(record.id, { ...record, status });
+  Message.success(status === 'published' ? '案例已上架' : '案例已下架');
+  fetchData();
 }
 
 async function openManage(record) {
@@ -1112,11 +1156,27 @@ onMounted(fetchData);
   margin-top: 16px;
 }
 
+.hidden-file-input {
+  display: none;
+}
+
 .manage-toolbar {
   margin-bottom: 12px;
 }
 
 .hidden-input {
   display: none;
+}
+
+.upload-field {
+  width: 100%;
+}
+
+.upload-image-preview {
+  width: 96px;
+  height: 72px;
+  object-fit: cover;
+  border: 1px solid var(--color-border-2);
+  border-radius: 4px;
 }
 </style>

@@ -59,7 +59,7 @@
               </div>
               <a-empty v-else description="暂无课程大纲" />
             </div>
-            <div class="outline-list">
+            <div v-if="false" class="outline-list">
               <h2>课程作业</h2>
               <div v-if="assignments.length" class="outline-chapters">
                 <section v-for="item in assignments" :key="item.id" class="outline-chapter">
@@ -145,7 +145,7 @@ const assignmentForm = reactive({ nickname: "", content: "", fileId: undefined }
 const uploadedAssignmentFile = ref(null);
 const uploadingAssignmentFile = ref(false);
 const difficultyText = {
-  basic: "基础",
+  basic: "入门",
   advanced: "进阶",
   expert: "专家"
 };

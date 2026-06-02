@@ -50,6 +50,16 @@
             </a-form-item>
           </a-col>
           <a-col :span="12">
+            <a-form-item field="avatarFileId" label="图片">
+              <a-space direction="vertical" fill class="upload-field">
+                <img v-if="formModel.avatarUrl" :src="formModel.avatarUrl" alt="专家图片" class="upload-image-preview" />
+                <a-tag v-if="formModel.avatarFileId" color="green">已上传图片</a-tag>
+                <a-button :loading="avatarUploading" @click="triggerAvatarUpload">上传 png/jpg</a-button>
+                <input ref="avatarFileInput" type="file" accept=".png,.jpg,.jpeg,image/png,image/jpeg" class="hidden-file-input" @change="handleAvatarFileChange" />
+              </a-space>
+            </a-form-item>
+          </a-col>
+          <a-col :span="12">
             <a-form-item field="status" label="状态">
               <a-select v-model="formModel.status">
                 <a-option :value="1">启用</a-option>
@@ -83,13 +93,10 @@
 
     <a-modal v-model:visible="resourceVisible" :title="`${currentExpert?.name || ''} 资源管理`" width="960px" :footer="false">
       <a-space direction="vertical" fill>
-        <a-button v-has="'edu:expert:resources'" type="primary" status="success" @click="openResourceCreate">新增关联资源</a-button>
+        <a-button v-has="'edu:expert:resources'" type="primary" status="success" @click="openResourceCreate">上传资源</a-button>
         <a-table :columns="resourceColumns" :data="resourceList" :pagination="false" row-key="id">
-          <template #type="{ record }">
-            <a-tag>{{ resourceTypeText[record.type] || record.type }}</a-tag>
-          </template>
-          <template #status="{ record }">
-            <a-tag :color="record.status === 1 ? 'green' : 'gray'">{{ record.status === 1 ? '启用' : '停用' }}</a-tag>
+          <template #file="{ record }">
+            <a-tag :color="record.fileId ? 'green' : 'gray'">{{ record.fileId ? '已上传' : '未上传' }}</a-tag>
           </template>
           <template #operations="{ record }">
             <a-space>
@@ -101,43 +108,21 @@
       </a-space>
     </a-modal>
 
-    <a-modal v-model:visible="resourceFormVisible" :title="resourceModel.id ? '编辑关联资源' : '新增关联资源'" width="680px" @before-ok="handleResourceSave">
+    <a-modal v-model:visible="resourceFormVisible" :title="resourceModel.id ? '编辑资源' : '上传资源'" width="680px" @before-ok="handleResourceSave">
       <a-form :model="resourceModel" layout="vertical">
         <a-form-item field="title" label="标题" required>
           <a-input v-model="resourceModel.title" placeholder="请输入门户展示标题" />
         </a-form-item>
-        <a-row :gutter="16">
-          <a-col :span="12">
-            <a-form-item field="type" label="类型">
-              <a-select v-model="resourceModel.type">
-                <a-option v-for="item in resourceTypeOptions" :key="item.value" :value="item.value">{{ item.label }}</a-option>
-              </a-select>
-            </a-form-item>
-          </a-col>
-          <a-col :span="12">
-            <a-form-item field="status" label="状态">
-              <a-select v-model="resourceModel.status">
-                <a-option :value="1">启用</a-option>
-                <a-option :value="0">停用</a-option>
-              </a-select>
-            </a-form-item>
-          </a-col>
-          <a-col :span="8">
-            <a-form-item field="resourceId" label="资源 ID">
-              <a-input-number v-model="resourceModel.resourceId" :min="0" style="width: 100%" />
-            </a-form-item>
-          </a-col>
-          <a-col :span="8">
-            <a-form-item field="courseId" label="课程 ID">
-              <a-input-number v-model="resourceModel.courseId" :min="0" style="width: 100%" />
-            </a-form-item>
-          </a-col>
-          <a-col :span="8">
-            <a-form-item field="fileId" label="文件 ID">
-              <a-input-number v-model="resourceModel.fileId" :min="0" style="width: 100%" />
-            </a-form-item>
-          </a-col>
-        </a-row>
+        <a-form-item field="summary" label="简介">
+          <a-textarea v-model="resourceModel.summary" :auto-size="{ minRows: 3, maxRows: 5 }" placeholder="请输入资源简介" />
+        </a-form-item>
+        <a-form-item field="fileId" label="上传文件" required>
+          <a-space direction="vertical" fill>
+            <a-button :loading="resourceUploading" @click="triggerResourceUpload">上传视频/Word/PPTX</a-button>
+            <a-tag v-if="resourceModel.fileId" color="green">已上传文件</a-tag>
+            <input ref="resourceFileInput" type="file" accept="video/*,.doc,.docx,.pptx" class="hidden-file-input" @change="handleResourceFileChange" />
+          </a-space>
+        </a-form-item>
       </a-form>
     </a-modal>
   </div>
@@ -156,14 +141,7 @@ import {
   updateExpert,
   updateExpertResource
 } from '@/api/edu/expert';
-
-const resourceTypeOptions = [
-  { label: '资源', value: 'resource' },
-  { label: '课程', value: 'course' },
-  { label: '讲座', value: 'lecture' },
-  { label: '文件', value: 'file' }
-];
-const resourceTypeText = Object.fromEntries(resourceTypeOptions.map((item) => [item.value, item.label]));
+import { uploadResourceFile } from '@/api/edu/resource';
 const queryForm = reactive({ keyword: '', pageIndex: 1, pageSize: 10 });
 const tableData = ref([]);
 const pagination = reactive({ current: 1, pageSize: 10, total: 0 });
@@ -174,6 +152,10 @@ const currentExpert = ref(null);
 const resourceList = ref([]);
 const formModel = reactive(defaultForm());
 const resourceModel = reactive(defaultResourceForm());
+const avatarFileInput = ref(null);
+const resourceFileInput = ref(null);
+const avatarUploading = ref(false);
+const resourceUploading = ref(false);
 
 const columns = [
   { title: '姓名', dataIndex: 'name', width: 120 },
@@ -186,20 +168,17 @@ const columns = [
 ];
 const resourceColumns = [
   { title: '标题', dataIndex: 'title', ellipsis: true, tooltip: true },
-  { title: '类型', slotName: 'type', width: 100 },
-  { title: '资源 ID', dataIndex: 'resourceId', width: 90 },
-  { title: '课程 ID', dataIndex: 'courseId', width: 90 },
-  { title: '文件 ID', dataIndex: 'fileId', width: 90 },
-  { title: '状态', slotName: 'status', width: 90 },
+  { title: '简介', dataIndex: 'summary', ellipsis: true, tooltip: true },
+  { title: '上传文件', slotName: 'file', width: 110 },
   { title: '操作', slotName: 'operations', width: 150 }
 ];
 
 function defaultForm() {
-  return { id: undefined, name: '', title: '', organization: '', specialties: '', introduction: '', isRecommended: 0, sort: 0, status: 1 };
+  return { id: undefined, name: '', title: '', organization: '', avatarFileId: 0, avatarUrl: '', specialties: '', introduction: '', isRecommended: 0, sort: 0, status: 1 };
 }
 
 function defaultResourceForm() {
-  return { id: undefined, title: '', type: 'resource', resourceId: 0, courseId: 0, fileId: 0, status: 1 };
+  return { id: undefined, title: '', summary: '', type: 'file', resourceId: 0, courseId: 0, fileId: 0, status: 1 };
 }
 
 function assignForm(data = {}) {
@@ -234,6 +213,34 @@ function openCreate() {
 function openEdit(record) {
   assignForm(record);
   formVisible.value = true;
+}
+
+function triggerAvatarUpload() {
+  avatarFileInput.value?.click();
+}
+
+async function handleAvatarFileChange(event) {
+  const file = event.target.files?.[0];
+  if (!file) return;
+  const extension = file.name.split('.').pop()?.toLowerCase();
+  if (!['png', 'jpg', 'jpeg'].includes(extension)) {
+    Message.warning('专家图片仅支持 png、jpg');
+    event.target.value = '';
+    return;
+  }
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('usage', 'expert_avatar');
+  avatarUploading.value = true;
+  try {
+    const res = await uploadResourceFile(formData);
+    formModel.avatarFileId = (res.data || {}).id || 0;
+    formModel.avatarUrl = '';
+    Message.success('图片上传成功');
+  } finally {
+    avatarUploading.value = false;
+    event.target.value = '';
+  }
 }
 
 async function handleSave() {
@@ -286,9 +293,40 @@ function openResourceEdit(record) {
   resourceFormVisible.value = true;
 }
 
+function triggerResourceUpload() {
+  resourceFileInput.value?.click();
+}
+
+async function handleResourceFileChange(event) {
+  const file = event.target.files?.[0];
+  if (!file) return;
+  const extension = file.name.split('.').pop()?.toLowerCase();
+  if (!file.type.startsWith('video/') && !['doc', 'docx', 'pptx'].includes(extension)) {
+    Message.warning('资源文件仅支持视频、Word、PPTX');
+    event.target.value = '';
+    return;
+  }
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('usage', 'expert_resource');
+  resourceUploading.value = true;
+  try {
+    const res = await uploadResourceFile(formData);
+    resourceModel.fileId = (res.data || {}).id || 0;
+    Message.success('资源上传成功');
+  } finally {
+    resourceUploading.value = false;
+    event.target.value = '';
+  }
+}
+
 async function handleResourceSave() {
   if (!resourceModel.title) {
     Message.warning('请输入资源标题');
+    return false;
+  }
+  if (!resourceModel.fileId) {
+    Message.warning('请上传资源文件');
     return false;
   }
   const payload = { ...resourceModel };
@@ -320,5 +358,21 @@ onMounted(fetchData);
 <style scoped>
 .table-card {
   margin-top: 16px;
+}
+
+.hidden-file-input {
+  display: none;
+}
+
+.upload-field {
+  width: 100%;
+}
+
+.upload-image-preview {
+  width: 72px;
+  height: 72px;
+  object-fit: cover;
+  border: 1px solid var(--color-border-2);
+  border-radius: 4px;
 }
 </style>

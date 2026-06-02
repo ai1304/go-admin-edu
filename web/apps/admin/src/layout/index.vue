@@ -28,9 +28,9 @@ const onCollapse = () => {
 </script>
 
 <style lang="scss">
-@import '../style/index.scss';
-@import '../style/transition.scss';
-@import '../style/dark-theme.scss';
+@use '../style/index.scss';
+@use '../style/transition.scss';
+@use '../style/dark-theme.scss';
 
 .layout-content {
   padding: 16px;

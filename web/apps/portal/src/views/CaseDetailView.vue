@@ -11,6 +11,7 @@
           <span>{{ data.school || "平台案例库" }}</span>
           <span>{{ data.viewCount || 0 }} 浏览</span>
         </div>
+        <img v-if="data.coverUrl" class="case-cover" :src="data.coverUrl" :alt="data.title" />
         <p class="summary">{{ data.summary || "案例信息已脱敏展示。" }}</p>
         <section v-if="ieps.length">
           <h2>IEP 摘要</h2>
@@ -97,6 +98,13 @@ h1 {
   color: #4e5969;
   font-size: 16px;
   line-height: 1.9;
+}
+.case-cover {
+  width: 100%;
+  max-height: 420px;
+  margin-top: 22px;
+  object-fit: cover;
+  border-radius: 8px;
 }
 h2 {
   margin-top: 28px;

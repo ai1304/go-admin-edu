@@ -29,14 +29,14 @@
     <a-spin :loading="loading" style="width: 100%">
       <div v-if="experts.length" class="expert-grid">
         <router-link v-for="item in experts" :key="item.id" :to="`/experts/${item.id}`" class="expert-card">
-          <div class="expert-avatar">{{ (item.name || "名").slice(0, 1) }}</div>
+          <div class="expert-avatar">
+            <img v-if="item.avatarUrl" :src="item.avatarUrl" :alt="item.name" />
+            <span v-else>{{ (item.name || "名").slice(0, 1) }}</span>
+          </div>
           <div class="expert-body">
-            <strong>
-              {{ item.name }}
-              <a-tag v-if="item.isRecommended" color="red">推荐</a-tag>
-            </strong>
+            <strong>{{ item.name }}</strong>
             <span>{{ item.title || "专家" }} · {{ item.organization || "平台专家库" }}</span>
-            <p>{{ item.specialties || item.introduction || "暂无简介" }}</p>
+            <p>{{ item.introduction || "暂无简介" }}</p>
             <small>{{ item.viewCount || 0 }} 关注 · 收藏 {{ item.favoriteCount || 0 }} · 分享 {{ item.shareCount || 0 }}</small>
           </div>
         </router-link>
@@ -124,6 +124,12 @@ onMounted(fetchExperts);
   font-weight: 800;
   background: linear-gradient(135deg, #176fd6, #12b886);
   border-radius: 50%;
+  overflow: hidden;
+}
+.expert-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 .expert-body {
   display: grid;
@@ -145,6 +151,10 @@ onMounted(fetchExperts);
   margin: 0;
   color: #4e5969;
   line-height: 1.7;
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 .pager {
   display: flex;

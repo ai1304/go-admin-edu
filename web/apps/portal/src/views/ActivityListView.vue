@@ -29,10 +29,9 @@
 
     <a-spin :loading="loading" style="width: 100%">
       <div v-if="activities.length" class="activity-grid">
-        <router-link v-for="item in activities" :key="item.id" :to="`/activities/${item.id}`" class="activity-card">
+        <router-link v-for="(item, index) in activities" :key="item.id" :to="`/activities/${item.id}`" class="activity-card">
           <div class="activity-cover">
-            <img v-if="item.coverUrl" :src="item.coverUrl" :alt="item.title" />
-            <span v-else>{{ item.track || "教研活动" }}</span>
+            <img :src="cardCover(item, 'activity', index)" :alt="item.title" />
             <a-tag v-if="item.awardLevel" class="award" color="red">{{ item.awardLevel }}</a-tag>
           </div>
           <div class="activity-body">
@@ -64,6 +63,7 @@
 import { onMounted, reactive, ref } from "vue";
 import PortalLayout from "@/layouts/PortalLayout.vue";
 import { getPublishedActivities } from "@/api/activities";
+import { cardCover } from "@/utils/defaultCovers";
 
 const loading = ref(false);
 const activities = ref([]);
@@ -168,22 +168,30 @@ onMounted(fetchActivities);
 }
 .activity-card {
   overflow: hidden;
+  display: grid;
+  grid-template-rows: 118px minmax(0, 1fr);
+  min-height: 330px;
   background: #fff;
   border: 1px solid #e5e6eb;
   border-radius: 8px;
 }
 .activity-cover {
   position: relative;
+  min-height: 0;
+  overflow: hidden;
   display: grid;
   place-items: center;
-  height: 150px;
+  height: 118px;
   color: #0b5ed7;
   font-weight: 800;
   background: #e8f3ff;
 }
 .activity-cover img {
+  display: block;
   width: 100%;
   height: 100%;
+  max-width: 100%;
+  max-height: 100%;
   object-fit: cover;
 }
 .award {
@@ -192,12 +200,25 @@ onMounted(fetchActivities);
   right: 10px;
 }
 .activity-body {
+  min-height: 0;
   padding: 14px;
 }
+.activity-body strong {
+  display: -webkit-box;
+  overflow: hidden;
+  font-size: 17px;
+  line-height: 1.45;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
 .activity-body p {
+  display: -webkit-box;
+  overflow: hidden;
   min-height: 44px;
   color: #4e5969;
   line-height: 1.7;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
 }
 .activity-body dl {
   display: grid;

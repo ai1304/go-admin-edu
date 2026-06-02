@@ -51,10 +51,6 @@
             </dl>
             <a-button v-if="!signed" type="primary" long class="side-action" @click="signupVisible = true">我要报名</a-button>
             <a-button v-else status="warning" long class="side-action" @click="handleCancelSignup">取消报名</a-button>
-            <a-button :disabled="!signed || checked" long class="side-action" @click="handleCheckin">
-              {{ checked ? "已签到" : "活动签到" }}
-            </a-button>
-            <a-button long class="side-action" @click="outcomeVisible = true">上传成果</a-button>
           </aside>
         </section>
       </template>

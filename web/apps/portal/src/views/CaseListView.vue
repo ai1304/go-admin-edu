@@ -29,10 +29,9 @@
 
     <a-spin :loading="loading" style="width: 100%">
       <div v-if="cases.length" class="case-grid">
-        <router-link v-for="item in cases" :key="item.id" :to="`/cases/${item.id}`" class="case-card">
+        <router-link v-for="(item, index) in cases" :key="item.id" :to="`/cases/${item.id}`" class="case-card">
           <div class="case-cover">
-            <img v-if="item.coverUrl" :src="item.coverUrl" :alt="item.title" />
-            <span v-else>{{ item.caseType || "特教案例" }}</span>
+            <img :src="cardCover(item, 'case', index)" :alt="item.title" />
           </div>
           <div class="case-body">
             <strong>{{ item.title }}</strong>
@@ -55,6 +54,7 @@
 import { onMounted, reactive, ref } from "vue";
 import PortalLayout from "@/layouts/PortalLayout.vue";
 import { getPublishedCases } from "@/api/cases";
+import { cardCover } from "@/utils/defaultCovers";
 
 const loading = ref(false);
 const cases = ref([]);

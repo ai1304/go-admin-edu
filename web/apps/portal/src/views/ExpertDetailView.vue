@@ -9,8 +9,16 @@
             </a-breadcrumb-item>
             <a-breadcrumb-item>{{ expert.name }}</a-breadcrumb-item>
           </a-breadcrumb>
-          <h1>{{ expert.name }}</h1>
-          <p>{{ expert.introduction || expert.specialties || "暂无专家简介" }}</p>
+          <div class="expert-profile">
+            <div class="expert-portrait">
+              <img v-if="expert.avatarUrl" :src="expert.avatarUrl" :alt="expert.name" />
+              <span v-else>{{ (expert.name || "名").slice(0, 1) }}</span>
+            </div>
+            <div>
+              <h1>{{ expert.name }}</h1>
+              <p>{{ expert.introduction || expert.specialties || "暂无专家简介" }}</p>
+            </div>
+          </div>
           <div class="meta-row">
             <a-tag color="purple">{{ expert.title || "专家" }}</a-tag>
             <a-tag>{{ expert.organization || "平台专家库" }}</a-tag>
@@ -35,19 +43,19 @@
                   @click="handleResourceClick(item)"
                 >
                   <strong>{{ item.title }}</strong>
-                  <span>{{ resourceTypeText[item.type] || "资源" }}</span>
+                  <span>{{ item.summary || resourceTypeText[item.type] || "资源" }}</span>
                 </component>
               </div>
               <a-empty v-else description="暂无关联资源" />
             </div>
           </article>
           <aside class="side-panel">
-            <a-button :type="favorited ? 'outline' : 'primary'" long class="side-action" @click="toggleFavorite">
-              {{ favorited ? "取消收藏" : "收藏专家" }}
-            </a-button>
-            <a-button long class="side-action" @click="handleShare">分享专家主页</a-button>
-            <h2>专业方向</h2>
-            <p>{{ expert.specialties || "暂未设置专业方向。" }}</p>
+            <h2>浏览排行</h2>
+            <router-link v-for="(item, index) in rankings" :key="item.id" :to="`/experts/${item.id}`" class="ranking-item">
+              <span>{{ index + 1 }}</span>
+              <strong>{{ item.name }}</strong>
+              <small>{{ item.viewCount || 0 }}</small>
+            </router-link>
           </aside>
         </section>
       </template>
@@ -80,6 +88,7 @@ const route = useRoute();
 const loading = ref(false);
 const expert = ref(null);
 const resources = ref([]);
+const rankings = ref([]);
 const favorited = ref(false);
 
 function clientKey() {
@@ -163,6 +172,7 @@ async function fetchExpert() {
     const res = await getPublishedExpert(route.params.id);
     expert.value = res.data?.expert || res.data || null;
     resources.value = res.data?.resources || [];
+    rankings.value = res.data?.rankings || [];
     await fetchFavoriteState();
   } finally {
     loading.value = false;
@@ -178,6 +188,51 @@ onMounted(fetchExpert);
   border: 0;
   text-align: left;
   cursor: pointer;
+}
+
+.expert-profile {
+  display: grid;
+  grid-template-columns: 112px minmax(0, 1fr);
+  gap: 20px;
+  align-items: center;
+}
+
+.expert-profile h1 {
+  margin-top: 0;
+}
+
+.expert-portrait {
+  display: grid;
+  place-items: center;
+  width: 112px;
+  height: 112px;
+  overflow: hidden;
+  color: #fff;
+  font-size: 42px;
+  font-weight: 700;
+  background: #176fd6;
+  border-radius: 8px;
+}
+
+.expert-portrait img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.ranking-item {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  padding: 10px 0;
+  color: #1d2129;
+  border-bottom: 1px solid #e5e6eb;
+}
+
+.ranking-item span,
+.ranking-item small {
+  color: #86909c;
 }
 
 .side-action {

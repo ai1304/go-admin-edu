@@ -31,6 +31,47 @@ type expertFavoriteReq struct {
 	ClientKey string `json:"clientKey" form:"clientKey"`
 }
 
+type publicExpertDTO struct {
+	models.EduExpert
+	AvatarURL string `json:"avatarUrl"`
+}
+
+func (e EduExpert) expertAvatarURLMap(c *gin.Context, list []models.EduExpert) map[int]string {
+	result := make(map[int]string)
+	ids := make([]int, 0)
+	for _, item := range list {
+		if item.AvatarFileId != 0 {
+			ids = append(ids, item.AvatarFileId)
+		}
+	}
+	if len(ids) == 0 {
+		return result
+	}
+	files := make([]models.EduResourceFile, 0)
+	if err := e.Orm.Where("id in ?", ids).Find(&files).Error; err != nil {
+		return result
+	}
+	storage, err := objectstorage.NewFromExtend()
+	if err != nil {
+		return result
+	}
+	for _, file := range files {
+		if url, err := storage.PresignedGetObject(c.Request.Context(), file.ObjectKey, 15*time.Minute); err == nil {
+			result[file.Id] = url
+		}
+	}
+	return result
+}
+
+func (e EduExpert) toPublicExperts(c *gin.Context, list []models.EduExpert) []publicExpertDTO {
+	avatarURLs := e.expertAvatarURLMap(c, list)
+	result := make([]publicExpertDTO, 0, len(list))
+	for _, item := range list {
+		result = append(result, publicExpertDTO{EduExpert: item, AvatarURL: avatarURLs[item.AvatarFileId]})
+	}
+	return result
+}
+
 func (e EduExpert) GetPage(c *gin.Context) {
 	req := expertQuery{}
 	if err := e.MakeContext(c).MakeOrm().Errors; err != nil {
@@ -65,7 +106,7 @@ func (e EduExpert) GetPage(c *gin.Context) {
 		e.Error(500, err, "查询失败")
 		return
 	}
-	e.PageOK(list, int(count), req.GetPageIndex(), req.GetPageSize(), "查询成功")
+	e.PageOK(e.toPublicExperts(c, list), int(count), req.GetPageIndex(), req.GetPageSize(), "查询成功")
 }
 
 func (e EduExpert) PublicGetPage(c *gin.Context) {
@@ -99,7 +140,7 @@ func (e EduExpert) PublicGetPage(c *gin.Context) {
 		e.Error(500, err, "查询失败")
 		return
 	}
-	e.PageOK(list, int(count), req.GetPageIndex(), req.GetPageSize(), "查询成功")
+	e.PageOK(e.toPublicExperts(c, list), int(count), req.GetPageIndex(), req.GetPageSize(), "查询成功")
 }
 
 func (e EduExpert) Get(c *gin.Context) {
@@ -127,9 +168,13 @@ func (e EduExpert) PublicGet(c *gin.Context) {
 		e.Error(404, err, "专家不存在")
 		return
 	}
+	_ = e.Orm.Model(&models.EduExpert{}).Where("id = ?", data.Id).UpdateColumn("view_count", gorm.Expr("view_count + ?", 1)).Error
+	data.ViewCount++
 	resources := make([]models.EduExpertResource, 0)
 	_ = e.Orm.Where("expert_id = ? and status = ?", data.Id, 1).Order("id desc").Find(&resources).Error
-	e.OK(gin.H{"expert": data, "resources": resources}, "查询成功")
+	rankings := make([]models.EduExpert, 0)
+	_ = e.Orm.Where("status = ?", 1).Order("view_count desc,id desc").Limit(10).Find(&rankings).Error
+	e.OK(gin.H{"expert": e.toPublicExperts(c, []models.EduExpert{data})[0], "resources": resources, "rankings": e.toPublicExperts(c, rankings)}, "查询成功")
 }
 
 func (e EduExpert) PublicResourceAccessURL(c *gin.Context) {
@@ -347,7 +392,7 @@ func (e EduExpert) InsertResource(c *gin.Context) {
 	}
 	req.ExpertId = parsePathId(c.Param("id"))
 	req.SetCreateBy(user.GetUserId(c))
-	if err := e.Orm.Select("ExpertId", "Title", "Type", "ResourceId", "CourseId", "FileId", "Status", "CreateBy").Create(&req).Error; err != nil {
+	if err := e.Orm.Select("ExpertId", "Title", "Summary", "Type", "ResourceId", "CourseId", "FileId", "Status", "CreateBy").Create(&req).Error; err != nil {
 		e.Error(500, err, "创建失败")
 		return
 	}
@@ -363,6 +408,7 @@ func (e EduExpert) UpdateResource(c *gin.Context) {
 	req.SetUpdateBy(user.GetUserId(c))
 	updates := map[string]interface{}{
 		"title":       req.Title,
+		"summary":     req.Summary,
 		"type":        req.Type,
 		"resource_id": req.ResourceId,
 		"course_id":   req.CourseId,

@@ -53,6 +53,44 @@ type caseReviewReq struct {
 	Comment string `json:"comment"`
 }
 
+func (e EduCase) caseCoverURLMap(c *gin.Context, list []models.EduCase) map[int]string {
+	result := make(map[int]string)
+	ids := make([]int, 0)
+	for _, item := range list {
+		if item.CoverFileId != 0 {
+			ids = append(ids, item.CoverFileId)
+		}
+	}
+	if len(ids) == 0 {
+		return result
+	}
+
+	files := make([]models.EduResourceFile, 0)
+	if err := e.Orm.Where("id in ?", ids).Find(&files).Error; err != nil {
+		return result
+	}
+	storage, err := objectstorage.NewFromExtend()
+	if err != nil {
+		return result
+	}
+	for _, file := range files {
+		if url, err := storage.PresignedGetObject(c.Request.Context(), file.ObjectKey, 15*time.Minute); err == nil {
+			result[file.Id] = url
+		}
+	}
+	return result
+}
+
+func (e EduCase) fillCaseCoverURLs(c *gin.Context, list []models.EduCase) []models.EduCase {
+	coverURLs := e.caseCoverURLMap(c, list)
+	for index := range list {
+		if coverURL := coverURLs[list[index].CoverFileId]; coverURL != "" {
+			list[index].CoverUrl = coverURL
+		}
+	}
+	return list
+}
+
 func applyCaseAccessLogFilters(db *gorm.DB, req caseAccessLogQuery) *gorm.DB {
 	if req.Action != "" {
 		db = db.Where("action = ?", req.Action)
@@ -259,7 +297,7 @@ func (e EduCase) GetPage(c *gin.Context) {
 	if req.Desensitize {
 		desensitizeCases(list)
 	}
-	e.PageOK(list, int(count), req.GetPageIndex(), req.GetPageSize(), "查询成功")
+	e.PageOK(e.fillCaseCoverURLs(c, list), int(count), req.GetPageIndex(), req.GetPageSize(), "查询成功")
 }
 
 func (e EduCase) PublicGetPage(c *gin.Context) {
@@ -297,7 +335,7 @@ func (e EduCase) PublicGetPage(c *gin.Context) {
 		return
 	}
 	desensitizeCases(list)
-	e.PageOK(list, int(count), req.GetPageIndex(), req.GetPageSize(), "查询成功")
+	e.PageOK(e.fillCaseCoverURLs(c, list), int(count), req.GetPageIndex(), req.GetPageSize(), "查询成功")
 }
 
 func (e EduCase) PublicGet(c *gin.Context) {
@@ -322,6 +360,7 @@ func (e EduCase) PublicGet(c *gin.Context) {
 	desensitizeIEPs(ieps)
 	desensitizeAssessments(assessments)
 	desensitizeInterventions(interventions)
+	data = e.fillCaseCoverURLs(c, []models.EduCase{data})[0]
 	e.OK(gin.H{"case": data, "ieps": ieps, "assessments": assessments, "interventions": interventions}, "查询成功")
 }
 
@@ -346,6 +385,7 @@ func (e EduCase) Get(c *gin.Context) {
 		desensitizeAssessments(assessments)
 		desensitizeInterventions(interventions)
 	}
+	data = e.fillCaseCoverURLs(c, []models.EduCase{data})[0]
 	e.writeAccessLog(c, data.Id, "view_detail")
 	e.OK(gin.H{"case": data, "ieps": ieps, "assessments": assessments, "interventions": interventions}, "查询成功")
 }

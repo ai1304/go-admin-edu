@@ -13,7 +13,7 @@
           <div class="login-form-container">
             <div class="account-top">
               <div class="account-top-logo">
-                <img :src="store.sysConfig.sys_app_logo" />
+                <img src="/avatar.gif" />
                 <span class="project-title">用户登录</span>
               </div>
               <div class="account-top-desc">横看成峰侧成岭 远近高低各不同</div>

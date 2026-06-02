@@ -1,6 +1,6 @@
 <template>
   <div class="sider-logo">
-    <img :src="store.sysConfig.sys_app_logo" />
+    <img src="/avatar.gif" />
     <span class="sider-title" v-if="!props.collapsed">{{store.sysConfig.sys_app_name}}</span>
   </div>
   <a-menu

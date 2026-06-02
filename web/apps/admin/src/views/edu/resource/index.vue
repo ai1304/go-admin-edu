@@ -21,7 +21,6 @@
             <a-button v-has="'edu:resource:query'" type="primary" @click="fetchData">查询</a-button>
             <a-button @click="resetQuery">重置</a-button>
             <a-button v-has="'edu:resource:add'" type="primary" status="success" @click="openCreate">新增资源</a-button>
-            <a-button v-has="'edu:resource:search'" @click="handleSearchReindex">同步搜索</a-button>
           </a-space>
         </a-form-item>
       </a-form>

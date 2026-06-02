@@ -23,8 +23,8 @@
             </a-form-item>
             <a-form-item field="visible" label="状态">
               <a-select v-model="queryForm.visible" placeholder="请选择菜单状态">
-                <a-option value="1">显示</a-option>
-                <a-option value="0">隐藏</a-option>
+                <a-option value="0">显示</a-option>
+                <a-option value="1">隐藏</a-option>
               </a-select>
             </a-form-item>
             <a-form-item>
@@ -59,8 +59,14 @@
           <a-tag v-else color="red">外部</a-tag>
         </template>
         <template #visible="{ record }">
-          <a-tag v-if="record.visible == '0'" color="green">显示</a-tag>
-          <a-tag v-else color="red">隐藏</a-tag>
+          <a-switch
+            :default-checked="record.visible === '0'"
+            checked-value="0"
+            unchecked-value="1"
+            checked-text="显示"
+            unchecked-text="隐藏"
+            @change="handleVisibleChange(record, $event)"
+          />
         </template>
         <template #action="{ record }">
           <a-button v-has="'admin:sysMenu:add'" type="text" @click="handleAddMenu(record.menuId)">新增</a-button>
@@ -242,7 +248,7 @@ const columns = [
   { title: '排序', dataIndex: 'sort', width: "80" },
   { title: '类型', dataIndex: 'menuType', slotName: 'menutype', width: "100" },
   { title: '是否外联', dataIndex: 'isFrame', slotName: 'isFrame', width: "100" },
-  { title: '显示状态', dataIndex: 'visible', slotName: 'visible', width: "100" },
+  { title: '显示状态', dataIndex: 'visible', slotName: 'visible', width: "120", fixed: "right" },
   { title: '操作', slotName: 'action' ,width: "220", fixed: "right" },
 ];
 const tableData = ref([]);
@@ -274,6 +280,38 @@ const handleUpdate = async (record) => {
   
   modalTitle.value = '修改菜单';
   modalVisible.value = true;
+};
+
+// 固定列中的 Switch 由自身完成切换，树数据同步只用于保持本地数据一致。
+const updateMenuVisibleTree = (menus, menuId, visible) =>
+  menus.map((menu) => {
+    if (menu.menuId === menuId) {
+      return { ...menu, visible };
+    }
+    if (menu.children?.length) {
+      return { ...menu, children: updateMenuVisibleTree(menu.children, menuId, visible) };
+    }
+    return menu;
+  });
+
+const menuApiIds = (record) => {
+  if (record.apis?.length) {
+    return record.apis;
+  }
+  return (record.sysApi || []).map((api) => api.id);
+};
+
+const handleVisibleChange = async (record, visible) => {
+  try {
+    const { success } = await updateMenu({ ...record, apis: menuApiIds(record), visible }, record.menuId);
+    if (success) {
+      tableData.value = updateMenuVisibleTree(tableData.value, record.menuId, visible);
+      proxy.$message.success(visible === '0' ? '菜单已显示' : '菜单已隐藏');
+      return;
+    }
+  } catch (error) {
+    proxy.$message.error('显示状态修改失败');
+  }
 };
 
 // handleSubmit 新增与修改按钮方法 20220713

@@ -95,16 +95,6 @@
             </a-form-item>
           </a-col>
           <a-col :span="12">
-            <a-form-item field="titleRank" label="职称">
-              <a-input v-model="formModel.titleRank" placeholder="正高 / 副高 / 中级及以下" />
-            </a-form-item>
-          </a-col>
-          <a-col :span="12">
-            <a-form-item field="sort" label="门户排序">
-              <a-input-number v-model="formModel.sort" :min="0" style="width: 100%" />
-            </a-form-item>
-          </a-col>
-          <a-col :span="12">
             <a-form-item field="status" label="状态">
               <a-select v-model="formModel.status">
                 <a-option v-for="item in statusOptions" :key="item.value" :value="item.value">{{ item.label }}</a-option>
