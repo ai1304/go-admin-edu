@@ -58,9 +58,8 @@ func New(cfg Config) (ObjectStorage, error) {
 
 type MinIOStorage struct {
 	client           *minio.Client
+	presignClient    *minio.Client
 	bucketName       string
-	publicScheme     string
-	publicHost       string
 	publicPathPrefix string
 }
 
@@ -72,11 +71,17 @@ func NewMinIO(cfg Config) (*MinIOStorage, error) {
 	if err != nil {
 		return nil, err
 	}
+	presignClient := client
+	if cfg.PublicEndpoint != "" {
+		presignClient, err = newMinIOClient(cfg.PublicEndpoint, cfg.AccessKeyID, cfg.AccessKeySecret, cfg.UseSSL)
+		if err != nil {
+			return nil, err
+		}
+	}
 	return &MinIOStorage{
 		client:           client,
+		presignClient:    presignClient,
 		bucketName:       cfg.BucketName,
-		publicScheme:     publicEndpointScheme(cfg.PublicEndpoint, cfg.UseSSL),
-		publicHost:       publicEndpointHost(cfg.PublicEndpoint),
 		publicPathPrefix: publicEndpointPathPrefix(cfg.PublicEndpoint),
 	}, nil
 }
@@ -106,16 +111,12 @@ func (s *MinIOStorage) PutObject(ctx context.Context, objectKey string, reader i
 func (s *MinIOStorage) PresignedGetObject(ctx context.Context, objectKey string, expires time.Duration) (string, error) {
 	ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
 	defer cancel()
-	u, err := s.client.PresignedGetObject(ctx, s.bucketName, objectKey, expires, nil)
+	u, err := s.presignClient.PresignedGetObject(ctx, s.bucketName, objectKey, expires, nil)
 	if err != nil {
 		return "", err
 	}
-	if s.publicHost != "" {
-		if s.publicPathPrefix != "" {
-			u.Path = strings.TrimRight(s.publicPathPrefix, "/") + u.Path
-		}
-		u.Scheme = s.publicScheme
-		u.Host = s.publicHost
+	if s.publicPathPrefix != "" {
+		u.Path = strings.TrimRight(s.publicPathPrefix, "/") + u.Path
 	}
 	return u.String(), nil
 }
@@ -143,21 +144,6 @@ func endpointUseSSL(endpoint string, fallback bool) bool {
 		return parsedURL.Scheme == "https"
 	}
 	return fallback
-}
-
-func publicEndpointScheme(endpoint string, fallbackUseSSL bool) string {
-	if endpointUseSSL(endpoint, fallbackUseSSL) {
-		return "https"
-	}
-	return "http"
-}
-
-func publicEndpointHost(endpoint string) string {
-	parsedURL, err := url.Parse(endpoint)
-	if err == nil && parsedURL.Host != "" {
-		return parsedURL.Host
-	}
-	return normalizeEndpoint(endpoint)
 }
 
 func publicEndpointPathPrefix(endpoint string) string {

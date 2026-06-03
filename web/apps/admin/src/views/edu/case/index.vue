@@ -989,7 +989,6 @@ async function handleSubmitReview() {
   Message.success('已提交审核');
   fetchData();
   fetchReviews();
-  currentCase.value.status = 'reviewing';
 }
 
 function openReviewAction(action) {
@@ -1001,7 +1000,7 @@ async function handleReviewSave() {
   await reviewCase(currentCase.value.id, { ...reviewModel });
   Message.success('审核处理成功');
   reviewVisible.value = false;
-  currentCase.value.status = reviewModel.action === 'approve' ? 'archived' : 'rejected';
+  currentCase.value.status = reviewModel.action === 'approve' ? 'published' : 'offline';
   fetchData();
   fetchReviews();
 }

@@ -50,8 +50,8 @@ settings:
       name: data
     storage:
       driver: minio
-      endpoint: localhost:9000
-      publicEndpoint: http://localhost:9000
+      endpoint: http://114.55.176.121:9000
+      publicEndpoint: http://114.55.176.121:9000
       accessKeyID: minioadmin
       accessKeySecret: minioadmin
       bucketName: go-admin-edu

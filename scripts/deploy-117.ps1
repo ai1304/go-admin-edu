@@ -11,11 +11,11 @@ $ErrorActionPreference = "Stop"
 
 $Root = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
 $StateDir = Join-Path $Root ".local"
-$RemoteScript = Join-Path $StateDir "deploy-117-remote.sh"
+$RemoteScript = Join-Path $StateDir "deploy-114-remote.sh"
 $ArtifactFile = Join-Path $Root "deploy-artifacts.tgz"
 
 function Write-Info($Message) {
-  Write-Host "[deploy-117] $Message" -ForegroundColor Cyan
+  Write-Host "[deploy-114] $Message" -ForegroundColor Cyan
 }
 
 function Test-Command($Name) {
@@ -31,32 +31,41 @@ function Invoke-Step($Message, [scriptblock]$Block) {
 
 function Build-Api {
   $apiOut = Join-Path $Root "deploy\artifacts\api\go-admin"
+  $goCache = Join-Path $Root ".local\go-build-cache"
   New-Item -ItemType Directory -Force -Path (Split-Path $apiOut) | Out-Null
+  New-Item -ItemType Directory -Force -Path $goCache | Out-Null
 
   $oldGoos = $env:GOOS
   $oldGoarch = $env:GOARCH
   $oldCgo = $env:CGO_ENABLED
+  $oldGoCache = $env:GOCACHE
   try {
     $env:GOOS = "linux"
     $env:GOARCH = "amd64"
     $env:CGO_ENABLED = "0"
+    $env:GOCACHE = $goCache
     Push-Location (Join-Path $Root "go-admin")
     go build -trimpath -ldflags="-s -w" -o $apiOut .
+    if ($LASTEXITCODE -ne 0) {
+      throw "Backend build failed with exit code $LASTEXITCODE."
+    }
   } finally {
     Pop-Location
     $env:GOOS = $oldGoos
     $env:GOARCH = $oldGoarch
     $env:CGO_ENABLED = $oldCgo
+    $env:GOCACHE = $oldGoCache
   }
 }
 
 function Build-Web {
-  Push-Location (Join-Path $Root "web")
-  try {
-    pnpm.cmd --dir apps/admin build
-    pnpm.cmd --dir apps/portal build
-  } finally {
-    Pop-Location
+  npm.cmd --prefix (Join-Path $Root "web\apps\admin") run build
+  if ($LASTEXITCODE -ne 0) {
+    throw "Admin web build failed with exit code $LASTEXITCODE."
+  }
+  npm.cmd --prefix (Join-Path $Root "web\apps\portal") run build
+  if ($LASTEXITCODE -ne 0) {
+    throw "Portal web build failed with exit code $LASTEXITCODE."
   }
 }
 
@@ -64,6 +73,7 @@ function Sync-Artifacts {
   $admin = Join-Path $Root "deploy\artifacts\admin"
   $portal = Join-Path $Root "deploy\artifacts\portal"
   $api = Join-Path $Root "deploy\artifacts\api"
+  $apiBinary = Join-Path $api "go-admin"
 
   foreach ($path in @($admin, $portal, $api)) {
     $resolvedParent = Split-Path $path
@@ -75,6 +85,9 @@ function Sync-Artifacts {
 
   Remove-Item -LiteralPath (Join-Path $admin "*") -Recurse -Force -ErrorAction SilentlyContinue
   Remove-Item -LiteralPath (Join-Path $portal "*") -Recurse -Force -ErrorAction SilentlyContinue
+  if (-not (Test-Path $apiBinary)) {
+    throw "API artifact was not found: $apiBinary"
+  }
   Copy-Item -Path (Join-Path $Root "web\apps\admin\dist\*") -Destination $admin -Recurse -Force
   Copy-Item -Path (Join-Path $Root "web\apps\portal\dist\*") -Destination $portal -Recurse -Force
   Copy-Item -Path (Join-Path $Root "deploy\api-runtime.Dockerfile") -Destination (Join-Path $api "Dockerfile") -Force
@@ -87,6 +100,9 @@ function Package-Artifacts {
   Push-Location $Root
   try {
     tar -czf deploy-artifacts.tgz -C deploy artifacts
+    if ($LASTEXITCODE -ne 0) {
+      throw "Packaging deploy artifacts failed with exit code $LASTEXITCODE."
+    }
   } finally {
     Pop-Location
   }
@@ -97,7 +113,7 @@ function Package-Artifacts {
 function Write-RemoteScript {
   New-Item -ItemType Directory -Force -Path $StateDir | Out-Null
 
-  @'
+  $remoteScriptContent = @'
 #!/bin/sh
 set -eu
 
@@ -128,8 +144,8 @@ sshpass -p "$SSH_PASS" ssh $SSH_OPTS "$REMOTE_USER@$REMOTE_HOST" "
 set -eu
 cd '$REMOTE_DIR'
 mkdir -p deploy web/apps/admin web/apps/portal go-admin/config
-sed -i "s#publicEndpoint: http://localhost:9000#publicEndpoint: http://${REMOTE_HOST}:9000#" go-admin/config/settings.docker.yml || true
-sed -i "s#publicEndpoint: http://[0-9.]*:9000#publicEndpoint: http://${REMOTE_HOST}:9000#" go-admin/config/settings.docker.yml || true
+sed -i 's#publicEndpoint: http://localhost:9000#publicEndpoint: http://'"${REMOTE_HOST}"':9000#' go-admin/config/settings.docker.yml || true
+sed -i 's#publicEndpoint: http://[0-9.]*:9000#publicEndpoint: http://'"${REMOTE_HOST}"':9000#' go-admin/config/settings.docker.yml || true
 rm -rf deploy/artifacts
 tar -xzf deploy-artifacts.tgz -C deploy
 chmod +x deploy/artifacts/api/go-admin
@@ -179,7 +195,9 @@ done
 fi
 
 echo "[remote] deploy ok"
-'@ | Set-Content -Encoding UTF8 -Path $RemoteScript
+'@
+
+  [System.IO.File]::WriteAllText($RemoteScript, $remoteScriptContent, [System.Text.UTF8Encoding]::new($false))
 }
 
 $password = [Environment]::GetEnvironmentVariable($PasswordEnv)
@@ -192,7 +210,7 @@ Test-Command "tar"
 
 if (-not $SkipBuild) {
   Test-Command "go"
-  Test-Command "pnpm.cmd"
+  Test-Command "npm.cmd"
   Invoke-Step "Build backend binary" { Build-Api }
   Invoke-Step "Build admin and portal web apps" { Build-Web }
 } else {
@@ -205,7 +223,7 @@ Invoke-Step "Prepare remote deploy helper" { Write-RemoteScript }
 
 $skipData = if ($SkipPortalDataCheck) { "1" } else { "0" }
 
-Invoke-Step "Upload, migrate, restart, and check 117 server" {
+Invoke-Step "Upload, migrate, restart, and check 114 server" {
   docker run --rm `
     -e SSH_PASS="$password" `
     -e REMOTE_HOST="$HostName" `

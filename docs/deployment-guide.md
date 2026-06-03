@@ -22,7 +22,7 @@
 
 当前已验证的远程服务器：
 
-- 服务器 IP：`117.72.200.80`
+- 服务器 IP：`114.55.176.121`
 - 登录用户：`root`
 - 管理端端口：`18080`
 - 门户端端口：`18081`
@@ -53,7 +53,7 @@ $env:GO_ADMIN_EDU_SSH_PASS = "部署时临时填写"
 2. 更推荐配置 SSH key：
 
 ```bash
-ssh-copy-id root@117.72.200.80
+ssh-copy-id root@114.55.176.121
 ```
 
 如果继续使用临时密码方式，部署脚本只应从环境变量读取，不应把密码硬编码到文件中。临时脚本执行完成后要删除。
@@ -151,17 +151,17 @@ MinIO 默认账号：
 
 ```powershell
 $env:GO_ADMIN_EDU_SSH_PASS = "服务器 root 密码"
-powershell -ExecutionPolicy Bypass -File scripts\deploy-117.ps1
+powershell -ExecutionPolicy Bypass -File scripts\deploy-114.ps1
 ```
 
 常用参数：
 
 ```powershell
 # 使用已有构建产物，只重新打包上传
-powershell -ExecutionPolicy Bypass -File scripts\deploy-117.ps1 -SkipBuild
+powershell -ExecutionPolicy Bypass -File scripts\deploy-114.ps1 -SkipBuild
 
 # 跳过门户业务数据接口抽查
-powershell -ExecutionPolicy Bypass -File scripts\deploy-117.ps1 -SkipPortalDataCheck
+powershell -ExecutionPolicy Bypass -File scripts\deploy-114.ps1 -SkipPortalDataCheck
 ```
 
 ### 5.1 服务器准备
@@ -203,7 +203,7 @@ git reset --hard origin/main
 生产或远程部署时，必须把 `publicEndpoint` 改成浏览器可访问的地址。
 
 ```bash
-sed -i 's#publicEndpoint: http://localhost:9000#publicEndpoint: http://117.72.200.80:9000#' go-admin/config/settings.docker.yml
+sed -i 's#publicEndpoint: http://localhost:9000#publicEndpoint: http://114.55.176.121:9000#' go-admin/config/settings.docker.yml
 ```
 
 说明：
@@ -252,7 +252,7 @@ tar -czf deploy-artifacts.tgz -C deploy artifacts
 示例：
 
 ```bash
-scp deploy-artifacts.tgz root@117.72.200.80:/opt/go-admin-edu/deploy-artifacts.tgz
+scp deploy-artifacts.tgz root@114.55.176.121:/opt/go-admin-edu/deploy-artifacts.tgz
 ```
 
 服务器解压：
@@ -303,10 +303,10 @@ curl -fsSI http://127.0.0.1:18081
 公网检查：
 
 ```text
-http://117.72.200.80:18080
-http://117.72.200.80:18081
-http://117.72.200.80:8000/api/v1/app-config
-http://117.72.200.80:9001
+http://114.55.176.121:18080
+http://114.55.176.121:18081
+http://114.55.176.121:8000/api/v1/app-config
+http://114.55.176.121:9001
 ```
 
 如果服务器本机检查通过，但公网访问超时，优先检查云服务器安全组。
@@ -329,20 +329,20 @@ go build -trimpath -ldflags='-s -w' -o D:\project\go-admin-edu\deploy\artifacts\
 上传并替换服务器文件：
 
 ```bash
-scp deploy/artifacts/api/go-admin root@117.72.200.80:/opt/go-admin-edu/deploy/artifacts/api/go-admin
-ssh root@117.72.200.80 'chmod +x /opt/go-admin-edu/deploy/artifacts/api/go-admin'
+scp deploy/artifacts/api/go-admin root@114.55.176.121:/opt/go-admin-edu/deploy/artifacts/api/go-admin
+ssh root@114.55.176.121 'chmod +x /opt/go-admin-edu/deploy/artifacts/api/go-admin'
 ```
 
 如果后端新增了迁移文件，先执行迁移：
 
 ```bash
-ssh root@117.72.200.80 "cd /opt/go-admin-edu && docker compose -p go-admin-edu -f deploy/docker-compose.runtime.yml run --rm api sh -c 'mkdir -p temp/logs && /main migrate -c /config/settings.yml'"
+ssh root@114.55.176.121 "cd /opt/go-admin-edu && docker compose -p go-admin-edu -f deploy/docker-compose.runtime.yml run --rm api sh -c 'mkdir -p temp/logs && /main migrate -c /config/settings.yml'"
 ```
 
 重启 API：
 
 ```bash
-ssh root@117.72.200.80 "cd /opt/go-admin-edu && docker compose -p go-admin-edu -f deploy/docker-compose.runtime.yml up -d api"
+ssh root@114.55.176.121 "cd /opt/go-admin-edu && docker compose -p go-admin-edu -f deploy/docker-compose.runtime.yml up -d api"
 ```
 
 ### 6.2 管理端前端有变化
@@ -356,13 +356,13 @@ npm.cmd --prefix web/apps/admin run build
 上传新的 dist：
 
 ```bash
-scp -r web/apps/admin/dist/* root@117.72.200.80:/opt/go-admin-edu/deploy/artifacts/admin/
+scp -r web/apps/admin/dist/* root@114.55.176.121:/opt/go-admin-edu/deploy/artifacts/admin/
 ```
 
 重启管理端 Nginx：
 
 ```bash
-ssh root@117.72.200.80 "cd /opt/go-admin-edu && docker compose -p go-admin-edu -f deploy/docker-compose.runtime.yml restart admin-web"
+ssh root@114.55.176.121 "cd /opt/go-admin-edu && docker compose -p go-admin-edu -f deploy/docker-compose.runtime.yml restart admin-web"
 ```
 
 ### 6.3 门户端前端有变化
@@ -376,13 +376,13 @@ npm.cmd --prefix web/apps/portal run build
 上传新的 dist：
 
 ```bash
-scp -r web/apps/portal/dist/* root@117.72.200.80:/opt/go-admin-edu/deploy/artifacts/portal/
+scp -r web/apps/portal/dist/* root@114.55.176.121:/opt/go-admin-edu/deploy/artifacts/portal/
 ```
 
 重启门户端 Nginx：
 
 ```bash
-ssh root@117.72.200.80 "cd /opt/go-admin-edu && docker compose -p go-admin-edu -f deploy/docker-compose.runtime.yml restart portal-web"
+ssh root@114.55.176.121 "cd /opt/go-admin-edu && docker compose -p go-admin-edu -f deploy/docker-compose.runtime.yml restart portal-web"
 ```
 
 ### 6.4 配置文件或部署文件有变化
@@ -391,19 +391,19 @@ ssh root@117.72.200.80 "cd /opt/go-admin-edu && docker compose -p go-admin-edu -
 
 ```bash
 git push origin main
-ssh root@117.72.200.80 "cd /opt/go-admin-edu && git fetch origin main && git reset --hard origin/main"
+ssh root@114.55.176.121 "cd /opt/go-admin-edu && git fetch origin main && git reset --hard origin/main"
 ```
 
 重新设置 MinIO 公网地址：
 
 ```bash
-ssh root@117.72.200.80 "cd /opt/go-admin-edu && sed -i 's#publicEndpoint: http://localhost:9000#publicEndpoint: http://117.72.200.80:9000#' go-admin/config/settings.docker.yml"
+ssh root@114.55.176.121 "cd /opt/go-admin-edu && sed -i 's#publicEndpoint: http://localhost:9000#publicEndpoint: http://114.55.176.121:9000#' go-admin/config/settings.docker.yml"
 ```
 
 重启相关服务：
 
 ```bash
-ssh root@117.72.200.80 "cd /opt/go-admin-edu && docker compose -p go-admin-edu -f deploy/docker-compose.runtime.yml up -d"
+ssh root@114.55.176.121 "cd /opt/go-admin-edu && docker compose -p go-admin-edu -f deploy/docker-compose.runtime.yml up -d"
 ```
 
 ### 6.5 全量更新
@@ -412,7 +412,7 @@ ssh root@117.72.200.80 "cd /opt/go-admin-edu && docker compose -p go-admin-edu -
 
 ```powershell
 tar -czf deploy-artifacts.tgz -C deploy artifacts
-scp deploy-artifacts.tgz root@117.72.200.80:/opt/go-admin-edu/deploy-artifacts.tgz
+scp deploy-artifacts.tgz root@114.55.176.121:/opt/go-admin-edu/deploy-artifacts.tgz
 ```
 
 服务器执行：
@@ -421,7 +421,7 @@ scp deploy-artifacts.tgz root@117.72.200.80:/opt/go-admin-edu/deploy-artifacts.t
 cd /opt/go-admin-edu
 git fetch origin main
 git reset --hard origin/main
-sed -i 's#publicEndpoint: http://localhost:9000#publicEndpoint: http://117.72.200.80:9000#' go-admin/config/settings.docker.yml
+sed -i 's#publicEndpoint: http://localhost:9000#publicEndpoint: http://114.55.176.121:9000#' go-admin/config/settings.docker.yml
 rm -rf deploy/artifacts
 tar -xzf deploy-artifacts.tgz -C deploy
 chmod +x deploy/artifacts/api/go-admin
@@ -464,7 +464,7 @@ ss -lntp | grep -E ':8000|:18080|:18081|:9000|:9001'
 extend:
   storage:
     endpoint: minio:9000
-    publicEndpoint: http://117.72.200.80:9000
+    publicEndpoint: http://114.55.176.121:9000
 ```
 
 `publicEndpoint` 必须是浏览器访问图片时使用的地址。

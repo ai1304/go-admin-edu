@@ -198,7 +198,6 @@ import {
   getResourceReviews,
   getResourceTags,
   getResources,
-  reindexResourceSearch,
   removeResourceComments,
   removeResourceFiles,
   removeResources,
@@ -346,12 +345,6 @@ function resetQuery() {
   queryForm.pageIndex = 1;
   pagination.current = 1;
   fetchData();
-}
-
-async function handleSearchReindex() {
-  const res = await reindexResourceSearch();
-  const data = res.data || {};
-  Message.success(`搜索同步完成：${data.synced || 0} 条已发布资源`);
 }
 
 function openCreate() {

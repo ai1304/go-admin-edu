@@ -16,8 +16,6 @@
                 <a-tag color="blue">{{ resource.authorName || "平台资源" }}</a-tag>
                 <a-tag v-for="tag in resource.tags || []" :key="tag.id" color="arcoblue">{{ tag.name }}</a-tag>
                 <a-tag>{{ resource.viewCount || 0 }} 次浏览</a-tag>
-                <a-tag>{{ resource.downloadCount || 0 }} 次下载</a-tag>
-                <a-tag>{{ resource.favoriteCount || 0 }} 次收藏</a-tag>
               </div>
             </div>
 
@@ -38,7 +36,7 @@
               </div>
 
               <div v-else-if="activeFile && activeKind === 'document'" class="pdf-stage">
-                <iframe v-if="activeUrl" :src="activeUrl" :title="activeFile.originalName"></iframe>
+                <iframe v-if="activeUrl" :src="documentPreviewUrl(activeUrl)" :title="activeFile.originalName"></iframe>
                 <div v-else class="preview-loading">正在获取文档地址...</div>
               </div>
 
@@ -54,9 +52,6 @@
 
             <section class="player-actions">
               <a-space wrap>
-                <a-button :type="favorited ? 'outline' : 'primary'" @click="toggleFavorite">
-                  {{ favorited ? "取消收藏" : "收藏资源" }}
-                </a-button>
                 <a-button v-if="activeFile" @click="openFile(activeFile)">新窗口预览</a-button>
               </a-space>
             </section>
@@ -191,13 +186,10 @@ import { useRoute } from "vue-router";
 import PortalLayout from "@/layouts/PortalLayout.vue";
 import {
   createResourceComment,
-  favoriteResource,
   getPublishedResource,
   getResourceComments,
-  getResourceFavoriteState,
   getResourceFileAccessUrl,
   likeResourceComment,
-  unfavoriteResource
 } from "@/api/resources";
 
 const route = useRoute();
@@ -205,7 +197,6 @@ const loading = ref(false);
 const resource = ref(null);
 const files = ref([]);
 const comments = ref([]);
-const favorited = ref(false);
 const replyTarget = ref(null);
 const activeFile = ref(null);
 const activeUrl = ref("");
@@ -244,16 +235,6 @@ const commentTree = computed(() => {
   return roots.sort((a, b) => (b.id || 0) - (a.id || 0));
 });
 
-function clientKey() {
-  const storageKey = "edu_portal_client_key";
-  let value = window.localStorage.getItem(storageKey);
-  if (!value) {
-    value = `guest-${Date.now()}-${Math.random().toString(16).slice(2)}`;
-    window.localStorage.setItem(storageKey, value);
-  }
-  return value;
-}
-
 async function fetchResource() {
   loading.value = true;
   try {
@@ -261,7 +242,7 @@ async function fetchResource() {
     resource.value = res.data?.resource || res.data || null;
     files.value = res.data?.files || [];
     pickInitialFile();
-    await Promise.all([fetchFavoriteState(), fetchComments()]);
+    await fetchComments();
   } finally {
     loading.value = false;
   }
@@ -272,11 +253,6 @@ function pickInitialFile() {
   if (initial) {
     nextTick(() => selectFile(initial));
   }
-}
-
-async function fetchFavoriteState() {
-  const res = await getResourceFavoriteState(route.params.id, { clientKey: clientKey() });
-  favorited.value = !!res.data?.favorited;
 }
 
 async function fetchComments() {
@@ -315,6 +291,11 @@ function previewTypeLabel(file) {
   return fileTypeText(file);
 }
 
+function documentPreviewUrl(url) {
+  if (!url) return "";
+  return `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(url)}`;
+}
+
 function formatSize(size = 0) {
   if (size < 1024) return `${size} B`;
   if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`;
@@ -351,37 +332,6 @@ async function openFile(file) {
   } catch (error) {
     Message.error("获取文件访问地址失败");
   }
-}
-
-async function downloadFile(file) {
-  try {
-    const url = await getFileUrl(file, "download");
-    window.open(url, "_blank", "noopener,noreferrer");
-    if (resource.value) {
-      resource.value.downloadCount = (resource.value.downloadCount || 0) + 1;
-    }
-  } catch (error) {
-    Message.error("获取下载地址失败");
-  }
-}
-
-async function toggleFavorite() {
-  const data = { clientKey: clientKey() };
-  if (favorited.value) {
-    await unfavoriteResource(route.params.id, data);
-    favorited.value = false;
-    if (resource.value?.favoriteCount > 0) {
-      resource.value.favoriteCount -= 1;
-    }
-    Message.success("已取消收藏");
-    return;
-  }
-  await favoriteResource(route.params.id, data);
-  favorited.value = true;
-  if (resource.value) {
-    resource.value.favoriteCount = (resource.value.favoriteCount || 0) + 1;
-  }
-  Message.success("收藏成功");
 }
 
 function replyTo(comment) {

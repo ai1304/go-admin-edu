@@ -454,14 +454,7 @@ func (e EduCase) SubmitReview(c *gin.Context) {
 		return
 	}
 	beforeStatus := data.Status
-	if err := e.Orm.Model(&models.EduCase{}).Where("id = ?", data.Id).Updates(map[string]interface{}{
-		"status":    "reviewing",
-		"update_by": user.GetUserId(c),
-	}).Error; err != nil {
-		e.Error(500, err, "submit review failed")
-		return
-	}
-	review := models.EduCaseReview{CaseId: data.Id, Action: "submit", BeforeStatus: beforeStatus, AfterStatus: "reviewing"}
+	review := models.EduCaseReview{CaseId: data.Id, Action: "submit", BeforeStatus: beforeStatus, AfterStatus: beforeStatus}
 	review.SetCreateBy(user.GetUserId(c))
 	_ = e.Orm.Create(&review).Error
 	e.OK(data.Id, "submit review success")
@@ -477,9 +470,9 @@ func (e EduCase) Review(c *gin.Context) {
 	if !ok {
 		return
 	}
-	afterStatus := "rejected"
+	afterStatus := "offline"
 	if req.Action == "approve" {
-		afterStatus = "archived"
+		afterStatus = "published"
 	}
 	review := models.EduCaseReview{
 		CaseId:       data.Id,

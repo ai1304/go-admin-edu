@@ -622,16 +622,14 @@ async function openStructure(record) {
 
 async function fetchStructure() {
   if (!currentCourse.value?.id) return;
-  const [chaptersRes, lessonsRes, assignmentsRes, recordsRes] = await Promise.all([
+  const [chaptersRes, lessonsRes] = await Promise.all([
     getCourseChapters(currentCourse.value.id),
-    getCourseLessons(currentCourse.value.id),
-    getCourseAssignments(currentCourse.value.id),
-    getCourseLearningRecords(currentCourse.value.id)
+    getCourseLessons(currentCourse.value.id)
   ]);
   chapterList.value = chaptersRes.data || [];
   lessonList.value = lessonsRes.data || [];
-  assignmentList.value = assignmentsRes.data || [];
-  recordList.value = recordsRes.data || [];
+  assignmentList.value = [];
+  recordList.value = [];
 }
 
 function openChapterCreate() {

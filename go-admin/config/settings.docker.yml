@@ -25,7 +25,7 @@ settings:
     storage:
       driver: minio
       endpoint: minio:9000
-      publicEndpoint: http://114.55.176.121:18080/minio
+      publicEndpoint: http://114.55.176.121:9000
       accessKeyID: minioadmin
       accessKeySecret: minioadmin
       bucketName: go-admin-edu

@@ -299,9 +299,7 @@ function defaultForm() {
     awardLevel: '',
     track: '',
     schoolType: '',
-    titleRank: '',
     status: 'draft',
-    sort: 0
   };
 }
 
@@ -357,7 +355,7 @@ async function handleSave() {
     Message.warning('请输入活动名称');
     return false;
   }
-  const payload = { ...formModel };
+  const { titleRank, sort, ...payload } = { ...formModel };
   if (payload.id) {
     await updateActivity(payload.id, payload);
   } else {

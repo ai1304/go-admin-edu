@@ -37,7 +37,6 @@
             <strong>{{ item.name }}</strong>
             <span>{{ item.title || "专家" }} · {{ item.organization || "平台专家库" }}</span>
             <p>{{ item.introduction || "暂无简介" }}</p>
-            <small>{{ item.viewCount || 0 }} 关注 · 收藏 {{ item.favoriteCount || 0 }} · 分享 {{ item.shareCount || 0 }}</small>
           </div>
         </router-link>
       </div>
@@ -142,8 +141,7 @@ onMounted(fetchExperts);
   justify-content: center;
   font-size: 17px;
 }
-.expert-body span,
-.expert-body small {
+.expert-body span {
   color: #86909c;
 }
 .expert-body p {

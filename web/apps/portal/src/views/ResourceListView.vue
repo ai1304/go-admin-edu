@@ -77,7 +77,7 @@
               <a-tag v-if="categoryName(item.resourceTypeId, 'resource_type')" color="blue">{{ categoryName(item.resourceTypeId, 'resource_type') }}</a-tag>
               <a-tag v-for="tag in item.tags || []" :key="tag.id" color="arcoblue">{{ tag.name }}</a-tag>
             </div>
-            <small>{{ item.authorName || "平台资源" }} · {{ item.viewCount || 0 }} 浏览 · {{ item.downloadCount || 0 }} 下载 · {{ item.favoriteCount || 0 }} 收藏</small>
+            <small>{{ item.authorName || "平台资源" }} · {{ item.viewCount || 0 }} 浏览</small>
           </div>
         </router-link>
       </div>
@@ -244,10 +244,11 @@ onMounted(async () => {
   overflow: hidden;
   display: grid;
   grid-template-rows: 150px minmax(0, 1fr);
-  height: 340px;
+  min-height: 350px;
   background: #fff;
   border: 1px solid #e5e6eb;
   border-radius: 8px;
+  box-shadow: 0 12px 28px rgba(35, 84, 150, 0.06);
 }
 
 .cover {
@@ -278,6 +279,7 @@ onMounted(async () => {
   flex-direction: column;
   gap: 10px;
   padding: 16px;
+  background: #fff;
 }
 
 .resource-body strong {
@@ -302,11 +304,14 @@ onMounted(async () => {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
+  max-height: 58px;
+  overflow: hidden;
 }
 
 .resource-body small {
   margin-top: auto;
   color: #86909c;
+  line-height: 1.5;
 }
 
 .pager {
