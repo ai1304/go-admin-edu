@@ -1,0 +1,324 @@
+<template>
+  <PortalLayout>
+    <section class="page-heading resource-heading">
+      <div>
+        <h1>资源中心</h1>
+        <p>按学段、障碍类型、资源类型和能力领域筛选优质特教资源。</p>
+      </div>
+      <div class="heading-actions">
+        <a-input-search v-model="query.keyword" placeholder="搜索标题、简介、关键词、作者" search-button @search="searchResources" />
+        <router-link to="/teacher/workbench">
+          <a-button type="primary">上传资源</a-button>
+        </router-link>
+      </div>
+    </section>
+
+    <section class="filter-panel resource-filter">
+      <a-form :model="query" layout="inline">
+        <a-form-item label="学段">
+          <a-select v-model="query.stageCategoryId" allow-clear placeholder="全部学段" style="width: 150px" @change="searchResources">
+            <a-option v-for="item in categoryOptions.stage" :key="item.id" :value="item.id">{{ item.name }}</a-option>
+          </a-select>
+        </a-form-item>
+        <a-form-item label="障碍类型">
+          <a-select v-model="query.disabilityTypeId" allow-clear placeholder="全部类型" style="width: 160px" @change="searchResources">
+            <a-option v-for="item in categoryOptions.disability" :key="item.id" :value="item.id">{{ item.name }}</a-option>
+          </a-select>
+        </a-form-item>
+        <a-form-item label="资源类型">
+          <a-select v-model="query.resourceTypeId" allow-clear placeholder="全部资源" style="width: 160px" @change="searchResources">
+            <a-option v-for="item in categoryOptions.resource_type" :key="item.id" :value="item.id">{{ item.name }}</a-option>
+          </a-select>
+        </a-form-item>
+        <a-form-item label="能力领域">
+          <a-select v-model="query.abilityDomainId" allow-clear placeholder="全部领域" style="width: 160px" @change="searchResources">
+            <a-option v-for="item in categoryOptions.ability_domain" :key="item.id" :value="item.id">{{ item.name }}</a-option>
+          </a-select>
+        </a-form-item>
+        <a-form-item label="专题分类">
+          <a-select v-model="query.topicCategoryId" allow-clear placeholder="全部专题" style="width: 150px" @change="searchResources">
+            <a-option v-for="item in categoryOptions.topic" :key="item.id" :value="item.id">{{ item.name }}</a-option>
+          </a-select>
+        </a-form-item>
+        <a-form-item label="标签">
+          <a-select v-model="query.tagId" allow-clear placeholder="全部标签" style="width: 150px" @change="searchResources">
+            <a-option v-for="item in tagOptions" :key="item.id" :value="item.id">{{ item.name }}</a-option>
+          </a-select>
+        </a-form-item>
+        <a-form-item label="排序">
+          <a-select v-model="query.sort" style="width: 140px" @change="searchResources">
+            <a-option value="latest">最新发布</a-option>
+            <a-option value="view">浏览最多</a-option>
+            <a-option value="download">下载最多</a-option>
+            <a-option value="favorite">收藏最多</a-option>
+          </a-select>
+        </a-form-item>
+        <a-form-item>
+          <a-space>
+            <a-button type="primary" @click="searchResources">查询</a-button>
+            <a-button @click="resetFilters">重置</a-button>
+          </a-space>
+        </a-form-item>
+      </a-form>
+    </section>
+
+    <a-spin :loading="loading" style="width: 100%">
+      <div v-if="resources.length" class="resource-grid">
+        <router-link v-for="(item, index) in resources" :key="item.id" :to="`/resources/${item.id}`" class="resource-card">
+          <div class="cover">
+            <img :src="cardCover(item, 'resource', index)" :alt="item.title" />
+          </div>
+          <div class="resource-body">
+            <strong>{{ item.title }}</strong>
+            <span>{{ item.summary || "暂无简介" }}</span>
+            <div class="resource-tags">
+              <a-tag v-if="categoryName(item.stageCategoryId, 'stage')">{{ categoryName(item.stageCategoryId, 'stage') }}</a-tag>
+              <a-tag v-if="categoryName(item.disabilityTypeId, 'disability')">{{ categoryName(item.disabilityTypeId, 'disability') }}</a-tag>
+              <a-tag v-if="categoryName(item.resourceTypeId, 'resource_type')" color="blue">{{ categoryName(item.resourceTypeId, 'resource_type') }}</a-tag>
+              <a-tag v-for="tag in item.tags || []" :key="tag.id" color="arcoblue">{{ tag.name }}</a-tag>
+            </div>
+            <small>{{ item.authorName || "平台资源" }} · {{ item.viewCount || 0 }} 浏览 · {{ item.downloadCount || 0 }} 下载 · {{ item.favoriteCount || 0 }} 收藏</small>
+          </div>
+        </router-link>
+      </div>
+      <a-empty v-else description="暂无资源" />
+    </a-spin>
+
+    <div v-if="total > query.pageSize" class="pager">
+      <a-pagination :current="query.pageIndex" :page-size="query.pageSize" :total="total" @change="handlePageChange" />
+    </div>
+  </PortalLayout>
+</template>
+
+<script setup>
+import { onMounted, reactive, ref } from "vue";
+import { useRoute } from "vue-router";
+import PortalLayout from "@/layouts/PortalLayout.vue";
+import { getResourceCategories, getResourceTags, searchPublishedResources } from "@/api/resources";
+import { cardCover } from "@/utils/defaultCovers";
+
+const loading = ref(false);
+const route = useRoute();
+const resources = ref([]);
+const total = ref(0);
+const tagOptions = ref([]);
+const query = reactive({
+  keyword: "",
+  tagId: undefined,
+  stageCategoryId: undefined,
+  disabilityTypeId: undefined,
+  resourceTypeId: undefined,
+  abilityDomainId: undefined,
+  topicCategoryId: undefined,
+  sort: "latest",
+  pageIndex: 1,
+  pageSize: 12
+});
+const categoryOptions = reactive({
+  stage: [],
+  disability: [],
+  resource_type: [],
+  ability_domain: [],
+  topic: []
+});
+
+function pagePayload(res) {
+  return res.data || {};
+}
+
+async function fetchCategories() {
+  const res = await getResourceCategories({ pageIndex: 1, pageSize: 1000, status: 1 });
+  const list = pagePayload(res).list || pagePayload(res) || [];
+  Object.keys(categoryOptions).forEach((key) => {
+    categoryOptions[key] = [];
+  });
+  list.forEach((item) => {
+    if (!categoryOptions[item.type]) {
+      categoryOptions[item.type] = [];
+    }
+    categoryOptions[item.type].push(item);
+  });
+  applyRouteFilters();
+}
+
+async function fetchTags() {
+  const res = await getResourceTags({ pageIndex: 1, pageSize: 1000, status: 1 });
+  const list = pagePayload(res).list || pagePayload(res) || [];
+  tagOptions.value = list;
+}
+
+async function fetchResources() {
+  loading.value = true;
+  try {
+    const res = await searchPublishedResources(query);
+    const payload = pagePayload(res);
+    resources.value = payload.list || payload || [];
+    total.value = payload.count || res.total || 0;
+  } finally {
+    loading.value = false;
+  }
+}
+
+function searchResources() {
+  query.pageIndex = 1;
+  fetchResources();
+}
+
+function resetFilters() {
+  query.keyword = "";
+  query.tagId = undefined;
+  query.stageCategoryId = undefined;
+  query.disabilityTypeId = undefined;
+  query.resourceTypeId = undefined;
+  query.abilityDomainId = undefined;
+  query.topicCategoryId = undefined;
+  query.sort = "latest";
+  query.pageIndex = 1;
+  fetchResources();
+}
+
+function handlePageChange(page) {
+  query.pageIndex = page;
+  fetchResources();
+}
+
+function categoryName(id, type) {
+  return (categoryOptions[type] || []).find((item) => item.id === id)?.name || "";
+}
+
+function applyRouteFilters() {
+  if (route.query.keyword) {
+    query.keyword = String(route.query.keyword);
+  }
+  if (route.query.sort) {
+    query.sort = String(route.query.sort);
+  }
+  if (route.query.type === "case") {
+    const caseCategory = (categoryOptions.resource_type || []).find((item) => item.name.includes("案例"));
+    if (caseCategory) {
+      query.resourceTypeId = caseCategory.id;
+    } else {
+      query.keyword = query.keyword || "案例";
+    }
+  }
+}
+
+onMounted(async () => {
+  await Promise.all([fetchCategories(), fetchTags()]);
+  await fetchResources();
+});
+</script>
+
+<style scoped>
+.resource-heading {
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 420px);
+  align-items: end;
+}
+
+.heading-actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+}
+
+.filter-panel {
+  margin-bottom: 18px;
+  padding: 16px;
+  background: #fff;
+  border: 1px solid #e5e6eb;
+  border-radius: 8px;
+}
+
+.resource-filter :deep(.arco-form) {
+  row-gap: 10px;
+}
+
+.resource-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.resource-card {
+  overflow: hidden;
+  display: grid;
+  grid-template-rows: 150px minmax(0, 1fr);
+  height: 340px;
+  background: #fff;
+  border: 1px solid #e5e6eb;
+  border-radius: 8px;
+}
+
+.cover {
+  position: relative;
+  min-height: 0;
+  height: 150px;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  background: #e8f3ff;
+  color: #165dff;
+  font-weight: 700;
+}
+
+.cover img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: cover;
+}
+
+.resource-body {
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px;
+}
+
+.resource-body strong {
+  display: -webkit-box;
+  overflow: hidden;
+  font-size: 17px;
+  line-height: 1.45;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.resource-body span {
+  display: -webkit-box;
+  overflow: hidden;
+  color: #4e5969;
+  line-height: 1.7;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.resource-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.resource-body small {
+  margin-top: auto;
+  color: #86909c;
+}
+
+.pager {
+  display: flex;
+  justify-content: center;
+  margin-top: 22px;
+}
+
+@media (max-width: 960px) {
+  .resource-heading,
+  .resource-grid {
+    grid-template-columns: 1fr;
+  }
+}
+</style>

@@ -1,0 +1,99 @@
+.recruit-admin-page {
+  padding: 20px;
+  background: #f4f8ff;
+}
+
+.page-title {
+  margin-bottom: 18px;
+  color: #12264b;
+  font-size: 26px;
+  font-weight: 800;
+}
+
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 18px;
+  margin-bottom: 18px;
+}
+
+.stat-card,
+.panel-card {
+  background: #fff;
+  border: 1px solid #dfe9f7;
+  border-radius: 8px;
+  box-shadow: 0 12px 32px rgba(20, 78, 148, 0.06);
+}
+
+.stat-card {
+  display: flex;
+  gap: 18px;
+  align-items: center;
+  padding: 22px;
+}
+
+.stat-icon {
+  display: grid;
+  place-items: center;
+  width: 58px;
+  height: 58px;
+  font-size: 26px;
+  border-radius: 50%;
+}
+
+.stat-icon.blue {
+  color: #0969e8;
+  background: #eaf3ff;
+}
+
+.stat-icon.green {
+  color: #19a86b;
+  background: #e9f8f0;
+}
+
+.stat-icon.orange {
+  color: #ff8a1f;
+  background: #fff2e5;
+}
+
+.stat-icon.purple {
+  color: #6d5dfc;
+  background: #f0edff;
+}
+
+.stat-icon.red {
+  color: #e5484d;
+  background: #fff0f0;
+}
+
+.stat-card p {
+  margin: 0 0 8px;
+  color: #6b778c;
+  font-weight: 700;
+}
+
+.stat-card strong {
+  color: #12264b;
+  font-size: 30px;
+}
+
+.panel-card {
+  padding: 18px;
+  margin-bottom: 18px;
+}
+
+.table-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 14px;
+}
+
+.query-form {
+  row-gap: 12px;
+}
+
+@media (max-width: 1000px) {
+  .stat-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

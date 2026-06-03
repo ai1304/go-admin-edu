@@ -1,0 +1,40 @@
+settings:
+  application:
+    mode: dev
+    host: 0.0.0.0
+    name: go-admin-edu
+    port: 8000
+    readtimeout: 600
+    writertimeout: 600
+    enabledp: true
+  logger:
+    path: temp/logs
+    stdout: default
+    level: info
+    enableddb: false
+  jwt:
+    secret: go-admin-edu-dev
+    timeout: 3600
+  database:
+    driver: mysql
+    source: root:123456@tcp(mysql:3306)/go_admin_edu?charset=utf8mb4&parseTime=True&loc=Local&timeout=1000ms
+  gen:
+    dbname: go_admin_edu
+    frontpath: ../web/apps/admin/src
+  extend:
+    storage:
+      driver: minio
+      endpoint: minio:9000
+      publicEndpoint: http://114.55.176.121:18080/minio
+      accessKeyID: minioadmin
+      accessKeySecret: minioadmin
+      bucketName: go-admin-edu
+      useSSL: false
+  cache:
+    redis:
+      addr: redis:6379
+      password: ""
+      db: 0
+  queue:
+    memory:
+      poolSize: 100
