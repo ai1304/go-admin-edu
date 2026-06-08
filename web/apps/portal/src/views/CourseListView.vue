@@ -3,9 +3,9 @@
     <section class="page-heading course-heading">
       <div>
         <h1>专题课程</h1>
-        <p>按学段、障碍类型、课程分类和难度筛选在线课程，查看课时、作业和学习进度。</p>
+        <p>按学段、障碍类型、课程分类和难度筛选在线课程</p>
       </div>
-      <a-input-search v-model="query.keyword" placeholder="搜索课程标题、教师、教学目标" search-button @search="searchCourses" />
+      <a-input-search v-model="query.keyword" placeholder="搜索课程标题、教师" search-button @search="searchCourses" />
     </section>
 
     <section class="filter-panel">
@@ -41,7 +41,7 @@
               <a-tag v-if="categoryName(item.disabilityTypeId, 'disability')">{{ categoryName(item.disabilityTypeId, 'disability') }}</a-tag>
               <a-tag v-if="item.category" color="arcoblue">{{ item.category }}</a-tag>
             </div>
-            <small>{{ item.teacherName || "平台课程" }} · {{ item.learnerCount || 0 }} 人学习 · {{ item.viewCount || 0 }} 浏览</small>
+            <small>{{ item.teacherName || "平台课程" }} · {{ item.organization || "平台课程库" }} · {{ item.viewCount || 0 }} 浏览</small>
           </div>
         </router-link>
       </div>
@@ -66,7 +66,7 @@ const route = useRoute();
 const loading = ref(false);
 const courses = ref([]);
 const total = ref(0);
-const query = reactive({ keyword: "", stageCategoryId: undefined, disabilityTypeId: undefined, category: undefined, difficulty: undefined, pageIndex: 1, pageSize: 12 });
+const query = reactive({ keyword: "", stageCategoryId: undefined, disabilityTypeId: undefined, category: undefined, difficulty: undefined, sort: "view", pageIndex: 1, pageSize: 12 });
 const categoryOptions = reactive({ stage: [], disability: [] });
 const difficultyOptions = [
   { label: "入门", value: "basic" },

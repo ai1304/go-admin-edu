@@ -17,7 +17,7 @@ settings:
     timeout: 3600
   database:
     driver: mysql
-    source: root:123456@tcp(mysql:3306)/go_admin_edu?charset=utf8mb4&parseTime=True&loc=Local&timeout=1000ms
+    source: go_admin_app:Aa$123456@tcp(mysql:3306)/go_admin_edu?charset=utf8mb4&parseTime=True&loc=Local&timeout=1000ms
   gen:
     dbname: go_admin_edu
     frontpath: ../web/apps/admin/src

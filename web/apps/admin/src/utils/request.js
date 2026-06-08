@@ -32,7 +32,18 @@ service.interceptors.request.use(
 // response interceptor
 service.interceptors.response.use(
   (response) => {
-    return response.data;
+    const body = response.data;
+    if (body?.code === 401) {
+      const store = useUserStore();
+      Message.error({
+        content: body.msg || 'Token expired, please log in again.',
+        duration: 3000
+      });
+      store.userLogout();
+      router.replace('/login');
+      return Promise.reject(body);
+    }
+    return body;
   },
   (error) => {
     const store = useUserStore();

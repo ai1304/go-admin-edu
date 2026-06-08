@@ -7,9 +7,6 @@
       </div>
       <div class="heading-actions">
         <a-input-search v-model="query.keyword" placeholder="搜索标题、简介、关键词、作者" search-button @search="searchResources" />
-        <router-link to="/teacher/workbench">
-          <a-button type="primary">上传资源</a-button>
-        </router-link>
       </div>
     </section>
 
@@ -50,7 +47,6 @@
             <a-option value="latest">最新发布</a-option>
             <a-option value="view">浏览最多</a-option>
             <a-option value="download">下载最多</a-option>
-            <a-option value="favorite">收藏最多</a-option>
           </a-select>
         </a-form-item>
         <a-form-item>

@@ -46,25 +46,10 @@
           <p>致力于汇聚优质特殊教育资源，推动教学科研协同与创新，服务高校、教师与研究者。</p>
         </div>
         <div>
-          <h3>快速导航</h3>
-          <router-link to="/resources">资源中心</router-link>
-          <router-link to="/courses">专题课程</router-link>
-          <router-link to="/activities">教研活动</router-link>
-          <router-link to="/recruit">招聘服务</router-link>
-          <router-link to="/experts">名师资源</router-link>
-        </div>
-        <div>
           <h3>联系我们</h3>
           <p>010-1234 5678</p>
           <p>service@tejiaoyuku.com</p>
           <p>北京市海淀区中关村东路1号院</p>
-        </div>
-        <div>
-          <h3>关注我们</h3>
-          <div class="qr-row">
-            <span>微信公众号</span>
-            <span>微信视频号</span>
-          </div>
         </div>
       </div>
       <p class="copyright">© 2024 特殊教育资源库 版权所有 | 京ICP备2024001234号-1</p>

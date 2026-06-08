@@ -32,7 +32,6 @@
         <template #operations="{ record }">
           <a-space>
             <a-button v-has="'edu:course:edit'" type="text" size="small" @click="openEdit(record)">编辑</a-button>
-            <a-button v-has="'edu:course:manage'" type="text" size="small" @click="openStructure(record)">章节/课时</a-button>
             <a-button v-has="'edu:course:remove'" type="text" status="danger" size="small" @click="handleDelete(record)">删除</a-button>
           </a-space>
         </template>
@@ -62,10 +61,38 @@
             </a-form-item>
           </a-col>
           <a-col :span="12">
+            <a-form-item field="teacherName" label="教师">
+              <a-input v-model="formModel.teacherName" :max-length="20" show-word-limit placeholder="请输入教师姓名" />
+            </a-form-item>
+          </a-col>
+          <a-col :span="12">
+            <a-form-item field="organization" label="机构">
+              <a-input v-model="formModel.organization" :max-length="50" show-word-limit placeholder="请输入机构名称" />
+            </a-form-item>
+          </a-col>
+          <a-col :span="12">
             <a-form-item field="status" label="状态">
               <a-select v-model="formModel.status">
                 <a-option v-for="item in statusOptions" :key="item.value" :value="item.value">{{ item.label }}</a-option>
               </a-select>
+            </a-form-item>
+          </a-col>
+          <a-col :span="12">
+            <a-form-item field="videoFileId" label="上传课程">
+              <a-space>
+                <a-button :loading="courseVideoUploading" @click="courseVideoInput?.click()">上传视频</a-button>
+                <a-tag v-if="formModel.videoFileId" color="blue">文件 ID：{{ formModel.videoFileId }}</a-tag>
+              </a-space>
+              <input ref="courseVideoInput" type="file" accept="video/*,.mp4,.webm,.mov,.m4v" class="hidden-file-input" @change="handleCourseVideoChange" />
+            </a-form-item>
+          </a-col>
+          <a-col :span="12">
+            <a-form-item field="coverFileId" label="封面">
+              <a-space>
+                <a-button :loading="courseCoverUploading" @click="courseCoverInput?.click()">上传图片</a-button>
+                <a-tag v-if="formModel.coverFileId" color="green">文件 ID：{{ formModel.coverFileId }}</a-tag>
+              </a-space>
+              <input ref="courseCoverInput" type="file" accept="image/*,.jpg,.jpeg,.png,.webp" class="hidden-file-input" @change="handleCourseCoverChange" />
             </a-form-item>
           </a-col>
           <a-col :span="24">
@@ -409,16 +436,22 @@ const assignmentModel = reactive(defaultAssignmentForm());
 const submissionModel = reactive(defaultSubmissionForm());
 const recordModel = reactive(defaultRecordForm());
 const resourceFileInput = ref(null);
+const courseVideoInput = ref(null);
+const courseCoverInput = ref(null);
 const resourceUploading = ref(false);
+const courseVideoUploading = ref(false);
+const courseCoverUploading = ref(false);
 const uploadLesson = ref(null);
 
 const columns = [
   { title: '课程标题', dataIndex: 'title', ellipsis: true, tooltip: true },
   { title: '课程简介', dataIndex: 'summary', ellipsis: true, tooltip: true },
   { title: '课程分类', dataIndex: 'category', width: 140 },
+  { title: '教师', dataIndex: 'teacherName', width: 120 },
+  { title: '机构', dataIndex: 'organization', ellipsis: true, tooltip: true, width: 160 },
   { title: '课程难度', slotName: 'difficulty', width: 110 },
   { title: '状态', slotName: 'status', width: 110 },
-  { title: '操作', slotName: 'operations', width: 220 }
+  { title: '操作', slotName: 'operations', width: 150 }
 ];
 const chapterColumns = [
   { title: '章节标题', dataIndex: 'title', ellipsis: true, tooltip: true },
@@ -467,7 +500,10 @@ function defaultForm() {
     id: undefined,
     title: '',
     summary: '',
+    coverFileId: 0,
+    videoFileId: 0,
     teacherName: '',
+    organization: '',
     category: '',
     difficulty: '',
     objectives: '',
@@ -476,6 +512,66 @@ function defaultForm() {
     disabilityTypeId: undefined,
     sort: 0
   };
+}
+
+async function uploadCourseFile(file, usage) {
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('usage', usage);
+  const res = await uploadResourceFile(formData);
+  const fileId = (res.data || {}).id || 0;
+  if (!fileId) {
+    throw new Error('missing uploaded file id');
+  }
+  return fileId;
+}
+
+async function handleCourseVideoChange(event) {
+  const file = event.target.files?.[0];
+  if (!file) return;
+  const extension = file.name.split('.').pop()?.toLowerCase();
+  if (!file.type.startsWith('video/') && !['mp4', 'webm', 'mov', 'm4v'].includes(extension)) {
+    Message.warning('请上传视频格式文件');
+    event.target.value = '';
+    return;
+  }
+  if (file.size > 1024 * 1024 * 1024) {
+    Message.warning('课程视频不能超过 1G');
+    event.target.value = '';
+    return;
+  }
+  courseVideoUploading.value = true;
+  try {
+    formModel.videoFileId = await uploadCourseFile(file, 'course_video');
+    Message.success('课程视频上传成功');
+  } finally {
+    courseVideoUploading.value = false;
+    event.target.value = '';
+  }
+}
+
+async function handleCourseCoverChange(event) {
+  const file = event.target.files?.[0];
+  if (!file) return;
+  const extension = file.name.split('.').pop()?.toLowerCase();
+  if (!file.type.startsWith('image/') && !['jpg', 'jpeg', 'png', 'webp'].includes(extension)) {
+    Message.warning('请上传图片格式封面');
+    event.target.value = '';
+    return;
+  }
+  if (file.size > 10 * 1024 * 1024) {
+    Message.warning('课程封面不能超过 10M');
+    event.target.value = '';
+    return;
+  }
+  courseCoverUploading.value = true;
+  try {
+    formModel.coverFileId = await uploadCourseFile(file, 'course_cover');
+    Message.success('课程封面上传成功');
+  } finally {
+    courseCoverUploading.value = false;
+    event.target.value = '';
+  }
 }
 
 function assignForm(data = {}) {
@@ -589,6 +685,14 @@ function openEdit(record) {
 async function handleSave() {
   if (!formModel.title) {
     Message.warning('请输入课程标题');
+    return false;
+  }
+  if ((formModel.teacherName || '').length > 20) {
+    Message.warning('教师不能超过 20 个字');
+    return false;
+  }
+  if ((formModel.organization || '').length > 50) {
+    Message.warning('机构不能超过 50 个字');
     return false;
   }
   const payload = { ...formModel };

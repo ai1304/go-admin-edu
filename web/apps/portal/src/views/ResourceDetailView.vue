@@ -5,12 +5,15 @@
         <section class="resource-player-page">
           <main class="resource-main">
             <div class="resource-titlebar">
-              <a-breadcrumb>
-                <a-breadcrumb-item>
-                  <router-link to="/resources">资源中心</router-link>
-                </a-breadcrumb-item>
-                <a-breadcrumb-item>{{ resource.title }}</a-breadcrumb-item>
-              </a-breadcrumb>
+              <div class="breadcrumb-line">
+                <a-button size="small" @click="router.push('/resources')">返回</a-button>
+                <a-breadcrumb>
+                  <a-breadcrumb-item>
+                    <router-link to="/resources">资源中心</router-link>
+                  </a-breadcrumb-item>
+                  <a-breadcrumb-item>{{ resource.title }}</a-breadcrumb-item>
+                </a-breadcrumb>
+              </div>
               <h1>{{ resource.title }}</h1>
               <div class="meta-row">
                 <a-tag color="blue">{{ resource.authorName || "平台资源" }}</a-tag>
@@ -97,9 +100,6 @@
                   正在回复 {{ replyTarget.nickname || "访客" }}
                   <a-button type="text" size="small" @click="cancelReply">取消</a-button>
                 </div>
-                <a-form-item field="nickname" label="昵称">
-                  <a-input v-model="commentForm.nickname" placeholder="请输入昵称" />
-                </a-form-item>
                 <a-form-item field="content" label="评论内容" required>
                   <a-textarea v-model="commentForm.content" :auto-size="{ minRows: 3, maxRows: 5 }" placeholder="说说你的想法" />
                 </a-form-item>
@@ -135,9 +135,9 @@
           <aside class="resource-sidebar">
             <section class="side-card">
               <h2>资源目录</h2>
-              <div v-if="files.length" class="catalog-list">
+              <div v-if="downloadableFiles.length" class="catalog-list">
                 <button
-                  v-for="(file, index) in files"
+                  v-for="(file, index) in downloadableFiles"
                   :key="file.id"
                   class="catalog-item"
                   :class="{ active: activeFile?.id === file.id }"
@@ -163,13 +163,24 @@
                 </div>
                 <div>
                   <dt>文件数</dt>
-                  <dd>{{ files.length }} 个</dd>
+                  <dd>{{ downloadableFiles.length }} 个</dd>
                 </div>
                 <div>
                   <dt>可预览</dt>
                   <dd>{{ previewableFiles.length }} 个</dd>
                 </div>
               </dl>
+            </section>
+
+            <section class="side-card">
+              <h2>推荐资源</h2>
+              <div v-if="recommendedResources.length" class="recommend-list">
+                <router-link v-for="item in recommendedResources" :key="item.id" :to="`/resources/${item.id}`" class="recommend-item">
+                  <strong>{{ item.title }}</strong>
+                  <small>{{ item.authorName || "平台资源" }} · {{ item.viewCount || 0 }} 浏览</small>
+                </router-link>
+              </div>
+              <a-empty v-else description="暂无推荐资源" />
             </section>
           </aside>
         </section>
@@ -182,21 +193,26 @@
 <script setup>
 import { Message } from "@arco-design/web-vue";
 import { computed, nextTick, onMounted, reactive, ref } from "vue";
-import { useRoute } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
 import PortalLayout from "@/layouts/PortalLayout.vue";
+import { useSessionStore } from "@/stores/session";
 import {
   createResourceComment,
   getPublishedResource,
+  getPublishedResources,
   getResourceComments,
   getResourceFileAccessUrl,
   likeResourceComment,
 } from "@/api/resources";
 
 const route = useRoute();
+const router = useRouter();
+const session = useSessionStore();
 const loading = ref(false);
 const resource = ref(null);
 const files = ref([]);
 const comments = ref([]);
+const recommendedResources = ref([]);
 const replyTarget = ref(null);
 const activeFile = ref(null);
 const activeUrl = ref("");
@@ -209,8 +225,8 @@ const imageExts = new Set(["jpg", "jpeg", "png", "gif", "webp", "bmp", "svg", "a
 const docExts = new Set(["ppt", "pptx", "doc", "docx", "xls", "xlsx"]);
 
 const activeKind = computed(() => fileKind(activeFile.value));
-const previewableFiles = computed(() => files.value.filter((file) => ["video", "pdf", "image", "document"].includes(fileKind(file))));
 const downloadableFiles = computed(() => files.value.filter((file) => file.usage !== "cover"));
+const previewableFiles = computed(() => downloadableFiles.value.filter((file) => ["video", "pdf", "image", "document"].includes(fileKind(file))));
 const keywordList = computed(() => (resource.value?.keywords || "").split(/[,，\s]+/).filter(Boolean));
 const previewHint = computed(() => {
   if (!activeFile.value) return "后台上传视频或 PDF 后，可在这里直接在线播放或在线预览。";
@@ -242,7 +258,7 @@ async function fetchResource() {
     resource.value = res.data?.resource || res.data || null;
     files.value = res.data?.files || [];
     pickInitialFile();
-    await fetchComments();
+    await Promise.all([fetchComments(), fetchRecommendedResources()]);
   } finally {
     loading.value = false;
   }
@@ -258,6 +274,20 @@ function pickInitialFile() {
 async function fetchComments() {
   const res = await getResourceComments(route.params.id);
   comments.value = res.data || [];
+}
+
+async function fetchRecommendedResources() {
+  if (!resource.value?.title) {
+    recommendedResources.value = [];
+    return;
+  }
+  const keyword = resource.value.title.split(/\s+/)[0]?.slice(0, 12) || resource.value.title.slice(0, 12);
+  const res = await getPublishedResources({ keyword, pageIndex: 1, pageSize: 8, sort: "view" });
+  const payload = res.data || {};
+  recommendedResources.value = (payload.list || payload || [])
+    .filter((item) => item.id !== resource.value.id)
+    .sort(() => Math.random() - 0.5)
+    .slice(0, 3);
 }
 
 function normalizedExt(file = {}) {
@@ -349,7 +379,8 @@ async function submitComment() {
     Message.warning("请输入评论内容");
     return;
   }
-  await createResourceComment(route.params.id, { ...commentForm, content: commentForm.content.trim() });
+  const nickname = session.user?.name || session.user?.nickName || session.user?.userName || "访客";
+  await createResourceComment(route.params.id, { ...commentForm, nickname, content: commentForm.content.trim() });
   Message.success(replyTarget.value ? "回复成功" : "评论成功");
   commentForm.content = "";
   cancelReply();
@@ -382,6 +413,13 @@ onMounted(fetchResource);
 .resource-titlebar {
   display: grid;
   gap: 12px;
+}
+
+.breadcrumb-line {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
 }
 
 .resource-titlebar h1 {
@@ -712,6 +750,36 @@ onMounted(fetchResource);
   padding: 10px 12px;
   background: #f7f8fa;
   border-radius: 8px;
+}
+
+.recommend-list {
+  display: grid;
+  gap: 10px;
+}
+
+.recommend-item {
+  display: grid;
+  gap: 6px;
+  padding: 12px;
+  background: #f7f8fa;
+  border: 1px solid transparent;
+  border-radius: 8px;
+}
+
+.recommend-item:hover {
+  color: #0b6be8;
+  background: #eef6ff;
+  border-color: #bedaff;
+}
+
+.recommend-item strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.recommend-item small {
+  color: #86909c;
 }
 
 @media (max-width: 980px) {

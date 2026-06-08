@@ -4,7 +4,7 @@ services:
     container_name: go-admin-edu-mysql
     restart: unless-stopped
     environment:
-      MYSQL_ROOT_PASSWORD: 123456
+      MYSQL_ROOT_PASSWORD: Aa$$123456
       MYSQL_DATABASE: go_admin_edu
       TZ: Asia/Shanghai
     command:
@@ -13,9 +13,9 @@ services:
     ports:
       - "3306:3306"
     volumes:
-      - mysql-data:/var/lib/mysql
+      - /opt/go-admin-edu/data/mysql:/var/lib/mysql
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-p123456"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-pAa$$123456"]
       interval: 10s
       timeout: 5s
       retries: 10
@@ -24,8 +24,6 @@ services:
     image: docker.1ms.run/library/redis:7-alpine
     container_name: go-admin-edu-redis
     restart: unless-stopped
-    ports:
-      - "6379:6379"
     volumes:
       - redis-data:/data
 
@@ -90,7 +88,6 @@ services:
       - ../web/apps/portal/nginx.conf:/etc/nginx/conf.d/default.conf:ro
 
 volumes:
-  mysql-data:
   redis-data:
   minio-data:
   api-static:

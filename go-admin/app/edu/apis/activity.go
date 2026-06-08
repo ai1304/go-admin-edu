@@ -152,6 +152,9 @@ func (e EduActivity) PublicGet(c *gin.Context) {
 	}
 	outcomes := make([]models.EduActivityOutcome, 0)
 	_ = e.Orm.Where("activity_id = ? and status = ?", data.Id, 1).Order("id desc").Find(&outcomes).Error
+	var signupCount int64
+	_ = e.Orm.Model(&models.EduActivitySignup{}).Where("activity_id = ? and status = ?", data.Id, "signed").Count(&signupCount).Error
+	data.SignupCount = signupCount
 	e.OK(gin.H{"activity": data, "outcomes": outcomes}, "查询成功")
 }
 

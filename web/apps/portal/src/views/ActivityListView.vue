@@ -3,7 +3,7 @@
     <section class="page-heading activity-heading">
       <div>
         <h1>教研活动</h1>
-        <p>展示特殊教育教研活动、竞赛成果与经验交流，支持按届数、奖项、赛道、学校类型和职称筛选。</p>
+        <p>展示特殊教育教研活动、竞赛成果与经验交流</p>
       </div>
       <a-input-search v-model="query.keyword" placeholder="搜索活动名称、学校、教师" search-button @search="searchActivities" />
     </section>
@@ -42,11 +42,6 @@
               <div><dt>教师</dt><dd>{{ item.teacher || "待公布" }}</dd></div>
               <div><dt>时间</dt><dd>{{ item.startTime || "时间待定" }}</dd></div>
             </dl>
-            <div class="tag-row">
-              <a-tag v-if="item.edition">{{ item.edition }}</a-tag>
-              <a-tag v-if="item.schoolType" color="blue">{{ item.schoolType }}</a-tag>
-              <a-tag v-if="item.titleRank" color="green">{{ item.titleRank }}</a-tag>
-            </div>
           </div>
         </router-link>
       </div>
@@ -68,13 +63,10 @@ import { cardCover } from "@/utils/defaultCovers";
 const loading = ref(false);
 const activities = ref([]);
 const total = ref(0);
-const query = reactive({ keyword: "", edition: "", awardLevel: "", track: "", schoolType: "", titleRank: "", pageIndex: 1, pageSize: 12 });
+const query = reactive({ keyword: "", track: "", schoolType: "", pageIndex: 1, pageSize: 12 });
 const filterGroups = [
-  { label: "届数", field: "edition", options: ["第一届", "第二届", "第三届", "第四届", "第五届"] },
-  { label: "获奖", field: "awardLevel", options: ["一等奖", "二等奖", "三等奖", "优秀奖"] },
   { label: "赛道", field: "track", options: ["新工科", "新医科", "新农科", "新文科", "基础课程", "课程思政", "产教融合"] },
-  { label: "学校类型", field: "schoolType", options: ["部属高校", "地方高校"] },
-  { label: "职称", field: "titleRank", options: ["正高", "副高", "中级及以下"] }
+  { label: "学校类型", field: "schoolType", options: ["部属高校", "地方高校"] }
 ];
 
 async function fetchActivities() {

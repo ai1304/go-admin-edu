@@ -3,12 +3,15 @@
     <a-spin :loading="loading" style="width: 100%">
       <template v-if="activity">
         <section class="detail-hero">
-          <a-breadcrumb>
-            <a-breadcrumb-item>
-              <router-link to="/activities">教研活动</router-link>
-            </a-breadcrumb-item>
-            <a-breadcrumb-item>{{ activity.title }}</a-breadcrumb-item>
-          </a-breadcrumb>
+          <div class="breadcrumb-line">
+            <a-button size="small" @click="router.push('/activities')">返回</a-button>
+            <a-breadcrumb>
+              <a-breadcrumb-item>
+                <router-link to="/activities">教研活动</router-link>
+              </a-breadcrumb-item>
+              <a-breadcrumb-item>{{ activity.title }}</a-breadcrumb-item>
+            </a-breadcrumb>
+          </div>
           <h1>{{ activity.title }}</h1>
           <p>{{ activity.summary || "暂无活动简介" }}</p>
           <div class="meta-row">
@@ -23,14 +26,14 @@
             <h2>活动介绍</h2>
             <p>{{ activity.summary || "暂未填写活动介绍。" }}</p>
             <div class="outline-list">
-              <h2>活动成果</h2>
+              <h2>活动详情</h2>
               <div v-if="outcomes.length" class="outline-chapters">
                 <section v-for="item in outcomes" :key="item.id" class="outline-chapter">
                   <strong>{{ item.title }}</strong>
                   <span>{{ item.content || "暂无成果说明" }}</span>
                 </section>
               </div>
-              <a-empty v-else description="暂无活动成果" />
+              <a-empty v-else description="暂无活动详情" />
             </div>
           </article>
           <aside class="side-panel">
@@ -61,12 +64,12 @@
         <a-form-item field="name" label="姓名" required>
           <a-input v-model="signupForm.name" placeholder="请输入姓名" />
         </a-form-item>
-        <a-form-item field="phone" label="电话">
+        <a-form-item field="phone" label="电话" required>
           <a-input v-model="signupForm.phone" placeholder="请输入联系电话" />
         </a-form-item>
       </a-form>
     </a-modal>
-    <a-modal v-model:visible="outcomeVisible" title="上传活动成果" width="560px" @before-ok="handleSubmitOutcome">
+    <a-modal v-model:visible="outcomeVisible" title="上传活动详情" width="560px" @before-ok="handleSubmitOutcome">
       <a-form :model="outcomeForm" layout="vertical">
         <a-form-item field="title" label="成果标题" required>
           <a-input v-model="outcomeForm.title" placeholder="请输入成果标题" />
@@ -88,7 +91,7 @@
 <script setup>
 import { Message } from "@arco-design/web-vue";
 import { onMounted, reactive, ref } from "vue";
-import { useRoute } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
 import PortalLayout from "@/layouts/PortalLayout.vue";
 import {
   cancelActivitySignup,
@@ -101,6 +104,7 @@ import {
 } from "@/api/activities";
 
 const route = useRoute();
+const router = useRouter();
 const loading = ref(false);
 const activity = ref(null);
 const outcomes = ref([]);
@@ -144,6 +148,10 @@ async function fetchSignupState() {
 async function handleSignup() {
   if (!signupForm.name) {
     Message.warning("请输入姓名");
+    return false;
+  }
+  if (!/^1[3-9]\d{9}$/.test(signupForm.phone.trim())) {
+    Message.warning("请输入正确的手机号");
     return false;
   }
   await signupActivity(route.params.id, { ...signupForm, clientKey: clientKey() });
@@ -208,5 +216,12 @@ onMounted(fetchActivity);
   margin: 8px 0 0;
   color: #165dff;
   font-size: 13px;
+}
+
+.breadcrumb-line {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
 }
 </style>

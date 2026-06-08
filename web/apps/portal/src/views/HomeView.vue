@@ -7,40 +7,44 @@
         <p class="summary">
           面向高校特殊教育专业、教师发展与实践教学，提供资源检索、专题学习、教研协作、案例共享与名师引领的一站式服务。
         </p>
-        <a-input-search
-          v-model="keyword"
-          class="hero-search"
-          size="large"
-          placeholder="搜索资源、课程、案例、名师资源..."
-          search-button
-          @search="handleSearch"
-        />
-        <div class="hot-searches">
-          <span>热门搜索：</span>
-          <router-link v-for="tag in hotSearches" :key="tag" :to="`/resources?keyword=${encodeURIComponent(tag)}`">{{ tag }}</router-link>
-        </div>
       </div>
     </section>
 
     <section class="home-section">
       <div class="section-title">
-        <h2>精品资源推荐</h2>
-        <router-link :to="activeResourceTab.morePath">查看更多 ></router-link>
+        <h2>精品课程</h2>
+        <router-link to="/courses">查看更多 ></router-link>
       </div>
-      <a-tabs v-model:active-key="activeTab" class="resource-tabs">
-        <a-tab-pane v-for="tab in resourceTabs" :key="tab.key" :title="tab.title" />
-      </a-tabs>
       <div class="resource-grid">
-        <router-link v-for="item in activeResourceTab.items" :key="item.title" :to="item.path" class="resource-card">
-          <div class="resource-cover" :style="{ backgroundImage: item.gradient }">
-            <span>{{ item.badge }}</span>
+        <router-link v-for="(item, index) in featuredCourses" :key="item.id || item.title" :to="item.id ? `/courses/${item.id}` : item.path" class="resource-card">
+          <div class="resource-cover image-cover">
+            <img v-if="item.coverUrl" :src="item.coverUrl" :alt="item.title" />
+            <img v-else :src="cardCover(item, 'course', index)" :alt="item.title" />
+            <span>{{ item.category || "课程" }}</span>
           </div>
           <strong>{{ item.title }}</strong>
-          <small>{{ item.author }}</small>
+          <small>{{ item.teacherName || item.author || "平台课程" }}</small>
           <div class="resource-meta">
-            <span>浏览 {{ item.views }}</span>
-            <span>收藏 {{ item.favorites }}</span>
+            <span>浏览 {{ formatCount(item.viewCount, item.views) }}</span>
           </div>
+        </router-link>
+      </div>
+    </section>
+
+    <section class="home-section">
+      <div class="section-title">
+        <h2>名师在线</h2>
+        <router-link to="/experts">更多专家 ></router-link>
+      </div>
+      <div class="home-expert-grid">
+        <router-link v-for="item in onlineExperts" :key="item.id || item.name" :to="item.id ? `/experts/${item.id}` : '/experts'" class="home-expert-card">
+          <div class="home-expert-avatar">
+            <img v-if="item.avatarUrl" :src="item.avatarUrl" :alt="item.name" />
+            <span v-else>{{ (item.name || "名").slice(0, 1) }}</span>
+          </div>
+          <strong>{{ item.name }}</strong>
+          <small>{{ item.title || "专家" }} · {{ item.organization || "平台名师库" }}</small>
+          <p>{{ item.summary || item.profile || "长期关注特殊教育课程建设、教师发展与实践指导。" }}</p>
         </router-link>
       </div>
     </section>
@@ -71,59 +75,31 @@
 </template>
 
 <script setup>
-import { computed, ref } from "vue";
-import { useRouter } from "vue-router";
+import { onMounted, ref } from "vue";
 import PortalLayout from "@/layouts/PortalLayout.vue";
+import { getPublishedCourses } from "@/api/courses";
+import { getPublishedExperts } from "@/api/experts";
+import { cardCover } from "@/utils/defaultCovers";
 
-const router = useRouter();
-const keyword = ref("");
-const activeTab = ref("featured");
+const featuredCourses = ref([]);
+const onlineExperts = ref([]);
 
-const hotSearches = ["融合教育", "特殊教育学", "IEP与评估", "无障碍环境", "辅助技术", "实践教学"];
-
-const resourceTabs = [
-  {
-    key: "featured",
-    title: "精品课程",
-    morePath: "/courses",
-    items: [
-      { title: "高等融合教育课程设计与实施", author: "张丽娜 教授", badge: "课程", views: "2.1万", favorites: 782, path: "/courses", gradient: "linear-gradient(135deg, #d7ebff, #4d8dff)" },
-      { title: "高等教育 IEP 制定与评估实务", author: "陈静 副教授", badge: "案例", views: "1.6万", favorites: 542, path: "/courses?keyword=IEP", gradient: "linear-gradient(135deg, #f0e2ff, #8a63e6)" },
-      { title: "高等特教教师教学方法与策略", author: "刘伟 副教授", badge: "方法", views: "1.2万", favorites: 431, path: "/courses", gradient: "linear-gradient(135deg, #dcf4ef, #20aa88)" },
-      { title: "特殊教育学生实践能力培养", author: "周敏 副教授", badge: "实践", views: "1.3万", favorites: 487, path: "/courses", gradient: "linear-gradient(135deg, #ffe9d6, #f28b2e)" },
-      { title: "无障碍课程资源建设专题", author: "平台教研组", badge: "专题", views: "9800", favorites: 358, path: "/courses?keyword=无障碍", gradient: "linear-gradient(135deg, #e1f8f3, #12a98f)" },
-      { title: "融合教育课堂观察与评价", author: "王立方 教授", badge: "评价", views: "1.1万", favorites: 399, path: "/courses?keyword=融合教育", gradient: "linear-gradient(135deg, #e9edff, #5f75e8)" }
-    ]
-  },
-  {
-    key: "hot",
-    title: "热门资源",
-    morePath: "/resources?sort=view",
-    items: [
-      { title: "辅助技术在高等教育中的应用", author: "王立方 教授", badge: "资源", views: "3.3万", favorites: 965, path: "/resources?keyword=辅助技术", gradient: "linear-gradient(135deg, #d9e3ff, #4768d9)" },
-      { title: "高等教育特殊支持政策解读与实践", author: "李晓慧 副教授", badge: "讲座", views: "1.8万", favorites: 643, path: "/resources?keyword=政策", gradient: "linear-gradient(135deg, #d8f6ff, #15a7c9)" },
-      { title: "融合教育课程资源包", author: "平台资源中心", badge: "资源包", views: "1.7万", favorites: 612, path: "/resources?keyword=融合教育", gradient: "linear-gradient(135deg, #eef3ff, #3678dc)" },
-      { title: "听障学生课堂支持工具清单", author: "资源共建小组", badge: "工具", views: "1.4万", favorites: 516, path: "/resources?keyword=听障", gradient: "linear-gradient(135deg, #fff1d8, #e79528)" },
-      { title: "特教案例分析模板", author: "教研中心", badge: "模板", views: "1.2万", favorites: 488, path: "/resources?keyword=案例", gradient: "linear-gradient(135deg, #e9f8ea, #30a75b)" },
-      { title: "学生发展支持记录表", author: "平台资源中心", badge: "表单", views: "1.1万", favorites: 453, path: "/resources?keyword=发展支持", gradient: "linear-gradient(135deg, #f3e7ff, #8f64d9)" }
-    ]
-  },
-  {
-    key: "latest",
-    title: "最新上传",
-    morePath: "/resources?sort=latest",
-    items: [
-      { title: "特殊教育专业实践教学案例集", author: "南京特教学院", badge: "新资源", views: "8200", favorites: 291, path: "/resources?sort=latest", gradient: "linear-gradient(135deg, #dff5ff, #23a1c8)" },
-      { title: "课程思政与融合教育教学设计", author: "平台教研组", badge: "课程", views: "7600", favorites: 268, path: "/courses?keyword=课程思政", gradient: "linear-gradient(135deg, #ffe8e1, #e45b42)" },
-      { title: "视障学生学习支持案例", author: "案例共建小组", badge: "案例", views: "6900", favorites: 245, path: "/resources?keyword=视障", gradient: "linear-gradient(135deg, #e6f4ff, #2976d8)" },
-      { title: "AI辅助个别化学习工具指南", author: "智能应用团队", badge: "指南", views: "6500", favorites: 232, path: "/resources?keyword=AI", gradient: "linear-gradient(135deg, #eef1ff, #6366d9)" },
-      { title: "高校无障碍环境建设观察表", author: "教研中心", badge: "表单", views: "5400", favorites: 197, path: "/resources?keyword=无障碍", gradient: "linear-gradient(135deg, #e3f8ef, #1ba676)" },
-      { title: "实践基地共建方案样例", author: "平台运营组", badge: "方案", views: "5100", favorites: 188, path: "/resources?keyword=实践基地", gradient: "linear-gradient(135deg, #fff0dc, #ed8c22)" }
-    ]
-  }
+const fallbackCourses = [
+  { title: "高等融合教育课程设计与实施", author: "张丽娜 教授", views: "2.1万", path: "/courses" },
+  { title: "高等教育 IEP 制定与评估实务", author: "陈静 副教授", views: "1.6万", path: "/courses?keyword=IEP" },
+  { title: "高等特教教师教学方法与策略", author: "刘伟 副教授", views: "1.2万", path: "/courses" },
+  { title: "特殊教育学生实践能力培养", author: "周敏 副教授", views: "1.3万", path: "/courses" },
+  { title: "无障碍课程资源建设专题", author: "平台教研组", views: "9800", path: "/courses?keyword=无障碍" },
+  { title: "融合教育课堂观察与评价", author: "王立方 教授", views: "1.1万", path: "/courses?keyword=融合教育" }
 ];
 
-const activeResourceTab = computed(() => resourceTabs.find((tab) => tab.key === activeTab.value) || resourceTabs[0]);
+const fallbackExperts = [
+  { name: "张丽娜", title: "教授", organization: "特殊教育学院", summary: "融合教育课程建设与教师发展专家。" },
+  { name: "王立方", title: "教授", organization: "教育科学学院", summary: "长期研究辅助技术与课堂支持。" },
+  { name: "陈静", title: "副教授", organization: "实践教学中心", summary: "聚焦 IEP 制定、评估与案例督导。" },
+  { name: "刘伟", title: "副教授", organization: "教师发展中心", summary: "关注特教教师专业能力培养。" },
+  { name: "周敏", title: "副教授", organization: "康复教育研究所", summary: "深耕学生实践能力与康复支持。" }
+];
 
 const news = [
   { title: "教育部印发关于加强高等学校特殊教育专业建设的指导意见", date: "2024-05-15" },
@@ -134,14 +110,37 @@ const news = [
 ];
 
 const highlights = [
-  { tag: "政策动态", title: "推动高等特殊教育高质量发展", description: "聚焦资源共建、师资发展与实践育人，梳理政策重点与平台建设方向。", date: "2024-05-15", gradient: "linear-gradient(135deg, #dfeaff, #2c72d2)" },
+  { tag: "政策法规", title: "推动高等特殊教育高质量发展", description: "聚焦资源共建、师资发展与实践育人，梳理政策重点与平台建设方向。", date: "2024-05-15", gradient: "linear-gradient(135deg, #dfeaff, #2c72d2)" },
   { tag: "学术前沿", title: "特殊教育领域最新研究热点", description: "梳理融合教育、辅助技术、评估支持等方向的研究进展。", date: "2024-05-12", gradient: "linear-gradient(135deg, #e6f8ff, #13a8c7)" },
-  { tag: "行业发展", title: "多校合作共建产学研协同平台", description: "推进协同培养、案例共建和跨校资源共享机制。", date: "2024-05-09", gradient: "linear-gradient(135deg, #ecf8ee, #27ae60)" },
-  { tag: "专家观点", title: "高等特教专业建设的实践思考", description: "从课程体系、实践基地、师资队伍等方面提出建议。", date: "2024-05-07", gradient: "linear-gradient(135deg, #fff0de, #f28b2e)" }
+  { tag: "行业动态", title: "多校合作共建产学研协同平台", description: "推进协同培养、案例共建和跨校资源共享机制。", date: "2024-05-09", gradient: "linear-gradient(135deg, #ecf8ee, #27ae60)" },
+  { tag: "优秀实践", title: "高等特教专业建设的实践思考", description: "从课程体系、实践基地、师资队伍等方面提出建议。", date: "2024-05-07", gradient: "linear-gradient(135deg, #fff0de, #f28b2e)" }
 ];
 
-function handleSearch(value) {
-  const query = (value || keyword.value || "").trim();
-  router.push(query ? `/resources?keyword=${encodeURIComponent(query)}` : "/resources");
+function pagePayload(res) {
+  return res.data || {};
 }
+
+function formatCount(count, fallback = "0") {
+  if (fallback && count === undefined) return fallback;
+  const value = Number(count || 0);
+  if (value >= 10000) return `${(value / 10000).toFixed(1)}万`;
+  return String(value);
+}
+
+onMounted(async () => {
+  const [coursesRes, expertsRes] = await Promise.allSettled([
+    getPublishedCourses({ pageIndex: 1, pageSize: 6, sort: "view" }),
+    getPublishedExperts({ pageIndex: 1, pageSize: 5, sort: "view" })
+  ]);
+  if (coursesRes.status === "fulfilled") {
+    const payload = pagePayload(coursesRes.value);
+    featuredCourses.value = payload.list || payload || [];
+  }
+  if (!featuredCourses.value.length) featuredCourses.value = fallbackCourses;
+  if (expertsRes.status === "fulfilled") {
+    const payload = pagePayload(expertsRes.value);
+    onlineExperts.value = payload.list || payload || [];
+  }
+  if (!onlineExperts.value.length) onlineExperts.value = fallbackExperts;
+});
 </script>

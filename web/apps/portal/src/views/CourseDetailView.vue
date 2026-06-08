@@ -3,12 +3,15 @@
     <a-spin :loading="loading" style="width: 100%">
       <template v-if="course">
         <section class="detail-hero">
-          <a-breadcrumb>
-            <a-breadcrumb-item>
-              <router-link to="/courses">专题课程</router-link>
-            </a-breadcrumb-item>
-            <a-breadcrumb-item>{{ course.title }}</a-breadcrumb-item>
-          </a-breadcrumb>
+          <div class="breadcrumb-line">
+            <a-button size="small" @click="router.push('/courses')">返回</a-button>
+            <a-breadcrumb>
+              <a-breadcrumb-item>
+                <router-link to="/courses">专题课程</router-link>
+              </a-breadcrumb-item>
+              <a-breadcrumb-item>{{ course.title }}</a-breadcrumb-item>
+            </a-breadcrumb>
+          </div>
           <h1>{{ course.title }}</h1>
           <p>{{ course.summary || "暂无课程简介" }}</p>
           <div class="meta-row">
@@ -20,12 +23,10 @@
 
         <section class="detail-layout">
           <article class="detail-panel">
-            <h2>教学目标</h2>
-            <p>{{ course.objectives || "暂未填写教学目标。" }}</p>
-            <section v-if="currentLesson" class="video-panel">
+            <section class="video-panel">
               <div class="section-title">
-                <h2>正在学习：{{ currentLesson.title }}</h2>
-                <a-tag :color="lessonProgress(currentLesson.id) >= 100 ? 'green' : 'orange'">
+                <h2>{{ currentLesson ? `正在学习：${currentLesson.title}` : "课程视频" }}</h2>
+                <a-tag v-if="currentLesson" :color="lessonProgress(currentLesson.id) >= 100 ? 'green' : 'orange'">
                   {{ lessonProgress(currentLesson.id) }}%
                 </a-tag>
               </div>
@@ -37,57 +38,18 @@
                 @timeupdate="handleVideoTimeUpdate"
                 @ended="handleVideoEnded"
               ></video>
-              <a-empty v-else description="该课时暂未配置视频" />
+              <a-empty v-else description="该课程暂未配置视频" />
             </section>
-            <div class="outline-list">
-              <h2>课程大纲</h2>
-              <div v-if="chapters.length" class="outline-chapters">
-                <section v-for="chapter in chapters" :key="chapter.id" class="outline-chapter">
-                  <strong>{{ chapter.title }}</strong>
-                  <div v-if="chapterLessons(chapter.id).length" class="outline-lessons">
-                    <div v-for="lesson in chapterLessons(chapter.id)" :key="lesson.id" class="lesson-row">
-                      <span>{{ lesson.title }} · {{ formatDuration(lesson.durationSeconds) }}</span>
-                      <a-space>
-                        <a-tag :color="lessonProgress(lesson.id) >= 100 ? 'green' : 'orange'">{{ lessonProgress(lesson.id) }}%</a-tag>
-                        <a-button size="mini" @click="openLesson(lesson)">学习</a-button>
-                        <a-button size="mini" type="primary" @click="markLessonFinished(lesson)">标记完成</a-button>
-                      </a-space>
-                    </div>
-                  </div>
-                  <small v-else>暂无课时</small>
-                </section>
-              </div>
-              <a-empty v-else description="暂无课程大纲" />
-            </div>
-            <div v-if="false" class="outline-list">
-              <h2>课程作业</h2>
-              <div v-if="assignments.length" class="outline-chapters">
-                <section v-for="item in assignments" :key="item.id" class="outline-chapter">
-                  <strong>{{ item.title }}</strong>
-                  <span>{{ item.content || "暂无作业说明" }}</span>
-                  <a-button type="primary" size="small" @click="openAssignment(item)">提交作业</a-button>
-                </section>
-              </div>
-              <a-empty v-else description="暂无课程作业" />
-            </div>
           </article>
           <aside class="side-panel">
-            <h2>课程信息</h2>
-            <dl class="info-list">
-              <div>
-                <dt>授课教师</dt>
-                <dd>{{ course.teacherName || "平台课程" }}</dd>
-              </div>
-              <div>
-                <dt>课程难度</dt>
-                <dd>{{ difficultyText[course.difficulty] || course.difficulty || "未设置" }}</dd>
-              </div>
-              <div>
-                <dt>浏览量</dt>
-                <dd>{{ course.viewCount || 0 }}</dd>
-              </div>
-            </dl>
-            <a-progress :percent="courseProgress / 100" :show-text="true" />
+            <h2>推荐课程</h2>
+            <div v-if="recommendedCourses.length" class="recommend-list">
+              <router-link v-for="item in recommendedCourses" :key="item.id" :to="`/courses/${item.id}`" class="recommend-item">
+                <strong>{{ item.title }}</strong>
+                <small>{{ item.teacherName || "平台课程" }} · {{ item.viewCount || 0 }} 浏览</small>
+              </router-link>
+            </div>
+            <a-empty v-else description="暂无推荐课程" />
           </aside>
         </section>
       </template>
@@ -118,11 +80,12 @@
 <script setup>
 import { Message } from "@arco-design/web-vue";
 import { computed, onMounted, reactive, ref } from "vue";
-import { useRoute } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
 import PortalLayout from "@/layouts/PortalLayout.vue";
 import {
   getCourseLearningRecords,
   getCourseLessonVideoUrl,
+  getPublishedCourses,
   getPublishedCourse,
   submitCourseAssignment,
   trackCourseLesson,
@@ -130,6 +93,7 @@ import {
 } from "@/api/courses";
 
 const route = useRoute();
+const router = useRouter();
 const loading = ref(false);
 const course = ref(null);
 const chapters = ref([]);
@@ -138,6 +102,7 @@ const assignments = ref([]);
 const learningRecords = ref([]);
 const currentLesson = ref(null);
 const videoUrl = ref("");
+const recommendedCourses = ref([]);
 const lastTrackedSecond = ref(0);
 const assignmentVisible = ref(false);
 const currentAssignment = ref(null);
@@ -173,10 +138,27 @@ async function fetchCourse() {
     chapters.value = res.data?.chapters || [];
     lessons.value = res.data?.lessons || [];
     assignments.value = res.data?.assignments || [];
+    videoUrl.value = res.data?.videoUrl || "";
+    if (videoUrl.value) currentLesson.value = null;
     await fetchLearningRecords();
+    await fetchRecommendedCourses();
   } finally {
     loading.value = false;
   }
+}
+
+async function fetchRecommendedCourses() {
+  if (!course.value?.title) {
+    recommendedCourses.value = [];
+    return;
+  }
+  const keyword = course.value.title.split(/\s+/)[0]?.slice(0, 12) || course.value.title.slice(0, 12);
+  const res = await getPublishedCourses({ keyword, pageIndex: 1, pageSize: 8, sort: "view" });
+  const payload = res.data || {};
+  recommendedCourses.value = (payload.list || payload || [])
+    .filter((item) => item.id !== course.value.id)
+    .sort(() => Math.random() - 0.5)
+    .slice(0, 3);
 }
 
 async function fetchLearningRecords() {
@@ -326,6 +308,13 @@ onMounted(fetchCourse);
   gap: 12px;
 }
 
+.breadcrumb-line {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
 .lesson-video {
   width: 100%;
   max-height: 420px;
@@ -338,5 +327,35 @@ onMounted(fetchCourse);
   margin: 8px 0 0;
   color: #165dff;
   font-size: 13px;
+}
+
+.recommend-list {
+  display: grid;
+  gap: 10px;
+}
+
+.recommend-item {
+  display: grid;
+  gap: 6px;
+  padding: 12px;
+  background: #f7f8fa;
+  border: 1px solid transparent;
+  border-radius: 8px;
+}
+
+.recommend-item:hover {
+  color: #0b6be8;
+  background: #eef6ff;
+  border-color: #bedaff;
+}
+
+.recommend-item strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.recommend-item small {
+  color: #86909c;
 }
 </style>

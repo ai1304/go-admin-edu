@@ -18,17 +18,22 @@ export const useUserStore = defineStore('user', {
   actions: {
     setToken(token) {
       this.token = token;
-      // Akiraka 20230504 设置缓存 token
       storage.setItem('token', token);
     },
     async getUserInfo() {
       try {
-        const { data } = await getInfo();
-        // storage.setItem('userInfo', res.data);
+        const { code, data, msg } = await getInfo();
+        if (code !== 200 || !data || !data.userId) {
+          this.userLogout();
+          throw new Error(msg || 'Failed to load current user info.');
+        }
         storage.setItem('uid', data.userId);
         this.userInfo = data;
+        return data;
       } catch (err) {
         console.error(err);
+        this.userLogout();
+        throw err;
       }
     },
     async getSysConfig() {
@@ -37,8 +42,8 @@ export const useUserStore = defineStore('user', {
         this.sysConfig = sysConfig;
       } else {
         try {
-          const { data, code, errorMessage } = await getAppConfig();
-          if ( code === 200 ) {
+          const { data, code } = await getAppConfig();
+          if (code === 200) {
             storage.setItem('sysConfig', data);
             this.sysConfig = data;
           }
@@ -49,9 +54,10 @@ export const useUserStore = defineStore('user', {
     },
     userLogout() {
       this.token = null;
+      this.uid = null;
       this.userInfo = null;
-      // Akiraka 20230504 清除缓存 token
       storage.removeItem('token');
+      storage.removeItem('uid');
     }
   }
 })

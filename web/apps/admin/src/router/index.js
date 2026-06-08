@@ -1,8 +1,7 @@
-import { createWebHashHistory, createRouter, createWebHistory } from 'vue-router';
+import { createWebHistory, createRouter } from 'vue-router';
 import Layout from '../layout/index.vue';
 import { useUserStore } from '../store/userInfo';
 import { usePermissionStore } from '../store/permission';
-import Watermark from '@/utils/watermark.js';
 
 const routes = [
   {
@@ -24,7 +23,7 @@ const routes = [
         name: '403',
         component: () => import('../views/error-page/403.vue'),
         meta: {
-          title: '找不到页面',
+          title: '无权访问',
         },
       },
       {
@@ -40,7 +39,7 @@ const routes = [
         name: '500',
         component: () => import('../views/error-page/500.vue'),
         meta: {
-          title: '找不到页面',
+          title: '服务异常',
         },
       },
     ]
@@ -53,49 +52,50 @@ const routes = [
 ];
 
 const router = createRouter({
-  // createWebHashHistory URL 带井号
-  // createWebHistory URL 去井号
   history: createWebHistory(),
-  routes: routes,
+  routes,
 });
 
-// beforeEach router
 router.beforeEach(async (to, from, next) => {
   const store = useUserStore();
   const permissionStore = usePermissionStore();
 
-  // 获取系统配置信息
-  if (!store.sysConfig){
+  if (!store.sysConfig) {
     await store.getSysConfig();
   }
 
   if (!store.token && to.name !== 'login') {
     next({ name: 'login' });
-  } else {
-    // 判断判断权限有无获取
-    if (store.token && !store.roles) {
+    return;
+  }
+
+  if (store.token && !store.roles) {
+    try {
       await store.getUserInfo();
-      await permissionStore.getMenuRole();
-      permissionStore.addRouters.forEach((route) => {
+      const dynamicRoutes = await permissionStore.getMenuRole();
+      dynamicRoutes.forEach((route) => {
         router.addRoute('/', route);
       });
-      // 如果 addRoute 并未完成，路由守卫会一层一层的执行执行，直到 addRoute 完成，找到对应的路由
-      next({ ...to, replace: true })
-    } else {
-      next();
+      next({ ...to, replace: true });
+    } catch (err) {
+      console.error(err);
+      permissionStore.ClearMenuList();
+      next({ name: 'login', replace: true });
     }
+    return;
   }
+
+  next();
 });
 
-// afterEach Router
 router.afterEach((to) => {
   const store = useUserStore();
-
-  // 修改网页标题
+  const appName = store.sysConfig?.sys_app_name || 'go-admin';
   if (to.name !== 'login') {
-    document.title = `${to.meta.title} - ${store.sysConfig.sys_app_name}`;
+    document.title = `${to.meta.title || ''} - ${appName}`;
   } else {
-    document.title = store.sysConfig.sys_app_name;
+    document.title = appName;
   }
 });
+
 export default router;

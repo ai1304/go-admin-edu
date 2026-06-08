@@ -5,11 +5,13 @@ type EduCourse struct {
 	Title            string `json:"title" gorm:"size:255;not null;index;comment:课程标题"`
 	Summary          string `json:"summary" gorm:"size:1024;comment:课程简介"`
 	CoverFileId      int    `json:"coverFileId" gorm:"index;comment:封面文件ID"`
+	VideoFileId      int    `json:"videoFileId" gorm:"index;comment:课程视频文件ID"`
 	StageCategoryId  int    `json:"stageCategoryId" gorm:"index;comment:学段分类ID"`
 	DisabilityTypeId int    `json:"disabilityTypeId" gorm:"index;comment:障碍类型分类ID"`
 	Category         string `json:"category" gorm:"size:128;index;comment:课程分类"`
 	Difficulty       string `json:"difficulty" gorm:"size:32;comment:难度"`
 	TeacherName      string `json:"teacherName" gorm:"size:128;comment:教师名称"`
+	Organization     string `json:"organization" gorm:"size:255;comment:机构"`
 	Objectives       string `json:"objectives" gorm:"type:text;comment:教学目标"`
 	Status           string `json:"status" gorm:"size:32;default:draft;index;comment:状态"`
 	ViewCount        int64  `json:"viewCount" gorm:"default:0;comment:浏览量"`

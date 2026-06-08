@@ -24,6 +24,7 @@ type expertQuery struct {
 	Specialty     string `form:"specialty"`
 	IsRecommended int    `form:"isRecommended"`
 	Status        int    `form:"status"`
+	Sort          string `form:"sort"`
 }
 
 type expertFavoriteReq struct {
@@ -102,11 +103,20 @@ func (e EduExpert) GetPage(c *gin.Context) {
 		e.Error(500, err, "查询失败")
 		return
 	}
-	if err := db.Order("is_recommended desc,sort desc,id desc").Limit(req.GetPageSize()).Offset((req.GetPageIndex() - 1) * req.GetPageSize()).Find(&list).Error; err != nil {
+	if err := db.Order(expertOrder(req.Sort)).Limit(req.GetPageSize()).Offset((req.GetPageIndex() - 1) * req.GetPageSize()).Find(&list).Error; err != nil {
 		e.Error(500, err, "查询失败")
 		return
 	}
 	e.PageOK(e.toPublicExperts(c, list), int(count), req.GetPageIndex(), req.GetPageSize(), "查询成功")
+}
+
+func expertOrder(sort string) string {
+	switch sort {
+	case "view":
+		return "view_count desc,id desc"
+	default:
+		return "is_recommended desc,sort desc,id desc"
+	}
 }
 
 func (e EduExpert) PublicGetPage(c *gin.Context) {

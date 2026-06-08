@@ -20,8 +20,14 @@ export const usePermissionStore = defineStore('permisson', {
     },
     GenerateRoutes(routeList) {
       const routes = [];
+      if (!Array.isArray(routeList)) {
+        return routes;
+      }
 
       routeList.forEach((item) => {
+        if (!item) {
+          return;
+        }
         const route = {};
         // if (item.visible == 0) {
           if (item.menuType === 'M' || item.menuType === 'C') {
@@ -49,8 +55,14 @@ export const usePermissionStore = defineStore('permisson', {
     },
     async getMenuRole() {
       const res = await getUserMenuRole();
+      if (res.code !== 200 || !Array.isArray(res.data)) {
+        this.setMenuList([]);
+        this.addRouters = [];
+        throw new Error(res.msg || 'Failed to load user menus.');
+      }
       this.setMenuList(res.data);
       this.addRouters = await this.GenerateRoutes(res.data);
+      return this.addRouters;
     },
     ClearMenuList() {
       this.menuList = [];

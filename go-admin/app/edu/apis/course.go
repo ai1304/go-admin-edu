@@ -30,6 +30,7 @@ type courseQuery struct {
 	DisabilityTypeId int    `form:"disabilityTypeId"`
 	Category         string `form:"category"`
 	Difficulty       string `form:"difficulty"`
+	Sort             string `form:"sort"`
 }
 
 type publicCourseIdentityReq struct {
@@ -51,6 +52,47 @@ type publicAssignmentSubmissionReq struct {
 	Nickname  string `json:"nickname"`
 	Content   string `json:"content"`
 	FileId    int    `json:"fileId"`
+}
+
+type publicCourseDTO struct {
+	models.EduCourse
+	CoverURL string `json:"coverUrl"`
+}
+
+func (e EduCourse) courseCoverURLMap(c *gin.Context, courses []models.EduCourse) map[int]string {
+	result := make(map[int]string)
+	coverIds := make([]int, 0)
+	for _, item := range courses {
+		if item.CoverFileId != 0 {
+			coverIds = append(coverIds, item.CoverFileId)
+		}
+	}
+	if len(coverIds) == 0 {
+		return result
+	}
+	files := make([]models.EduResourceFile, 0)
+	if err := e.Orm.Where("id in ?", coverIds).Find(&files).Error; err != nil {
+		return result
+	}
+	storage, err := objectstorage.NewFromExtend()
+	if err != nil {
+		return result
+	}
+	for _, file := range files {
+		if url, err := storage.PresignedGetObject(c.Request.Context(), file.ObjectKey, 15*time.Minute); err == nil {
+			result[file.Id] = url
+		}
+	}
+	return result
+}
+
+func (e EduCourse) toPublicCourses(c *gin.Context, courses []models.EduCourse) []publicCourseDTO {
+	coverURLs := e.courseCoverURLMap(c, courses)
+	result := make([]publicCourseDTO, 0, len(courses))
+	for _, item := range courses {
+		result = append(result, publicCourseDTO{EduCourse: item, CoverURL: coverURLs[item.CoverFileId]})
+	}
+	return result
 }
 
 func (e EduCourse) GetPage(c *gin.Context) {
@@ -93,7 +135,7 @@ func (e EduCourse) GetPage(c *gin.Context) {
 		e.Error(500, err, "查询失败")
 		return
 	}
-	e.PageOK(list, int(count), req.GetPageIndex(), req.GetPageSize(), "查询成功")
+	e.PageOK(e.toPublicCourses(c, list), int(count), req.GetPageIndex(), req.GetPageSize(), "查询成功")
 }
 
 func (e EduCourse) PublicGetPage(c *gin.Context) {
@@ -126,11 +168,22 @@ func (e EduCourse) PublicGetPage(c *gin.Context) {
 		e.Error(500, err, "查询失败")
 		return
 	}
-	if err := db.Order("sort desc,id desc").Limit(req.GetPageSize()).Offset((req.GetPageIndex() - 1) * req.GetPageSize()).Find(&list).Error; err != nil {
+	if err := db.Order(courseOrder(req.Sort)).Limit(req.GetPageSize()).Offset((req.GetPageIndex() - 1) * req.GetPageSize()).Find(&list).Error; err != nil {
 		e.Error(500, err, "查询失败")
 		return
 	}
 	e.PageOK(list, int(count), req.GetPageIndex(), req.GetPageSize(), "查询成功")
+}
+
+func courseOrder(sort string) string {
+	switch sort {
+	case "view":
+		return "view_count desc,id desc"
+	case "learner":
+		return "learner_count desc,id desc"
+	default:
+		return "sort desc,id desc"
+	}
 }
 
 func (e EduCourse) Get(c *gin.Context) {
@@ -168,7 +221,26 @@ func (e EduCourse) PublicGet(c *gin.Context) {
 	_ = e.Orm.Where("course_id = ? and status = ?", data.Id, 1).Order("id desc").Find(&assignments).Error
 	_ = e.Orm.Model(&models.EduCourse{}).Where("id = ?", data.Id).UpdateColumn("view_count", gorm.Expr("view_count + ?", 1)).Error
 	data.ViewCount++
-	e.OK(gin.H{"course": data, "chapters": chapters, "lessons": lessons, "assignments": assignments}, "查询成功")
+	videoURL := ""
+	if data.VideoFileId != 0 {
+		if url, err := e.courseVideoURL(c, data.VideoFileId); err == nil {
+			videoURL = url
+		}
+	}
+	course := e.toPublicCourses(c, []models.EduCourse{data})[0]
+	e.OK(gin.H{"course": course, "chapters": chapters, "lessons": lessons, "assignments": assignments, "videoUrl": videoURL}, "查询成功")
+}
+
+func (e EduCourse) courseVideoURL(c *gin.Context, fileId int) (string, error) {
+	var file models.EduResourceFile
+	if err := e.Orm.First(&file, fileId).Error; err != nil {
+		return "", err
+	}
+	storage, err := objectstorage.NewFromExtend()
+	if err != nil {
+		return "", err
+	}
+	return storage.PresignedGetObject(c.Request.Context(), file.ObjectKey, 15*time.Minute)
 }
 
 func (e EduCourse) Insert(c *gin.Context) {
